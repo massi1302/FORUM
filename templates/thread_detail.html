@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Forum Éducatif</div>
+            <ul class="nav-links">
+                <li><a href="/">Accueil</a></li>
+                <li><a href="/threads">Sujets</a></li>
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                <li class="user-links hidden">
+                    <a href="/profile">Mon profil</a>
+                    <a href="#" id="logout-btn">Déconnexion</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="thread-detail" id="thread-detail">
+                <!-- Le thread sera chargé dynamiquement -->
+                <div class="loading">Chargement du sujet...</div>
+            </div>
+
+            <div class="messages-container">
+                <h2>Messages</h2>
+                <div id="messages-list">
+                    <!-- Les messages seront chargés dynamiquement -->
+                    <div class="loading">Chargement des messages...</div>
+                </div>
+
+                <div class="new-message-form hidden">
+                    <h3>Répondre</h3>
+                    <form id="new-message-form">
+                        <div class="form-group">
+                            <label for="message-content">Votre message</label>
+                            <textarea id="message-content" name="content" rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Envoyer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Forum Éducatif. Tous droits réservés.</p>
+    </footer>
+
+    <script src="/static/js/thread.js"></script>
+</body>
+</html>

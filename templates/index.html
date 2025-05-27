@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Forum Éducatif</div>
+            <ul class="nav-links">
+                <li><a href="/" class="active">Accueil</a></li>
+                <li><a href="/threads">Sujets</a></li>
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                <li class="user-links hidden">
+                    <a href="/profile">Mon profil</a>
+                    <a href="#" id="logout-btn">Déconnexion</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Bienvenue sur le Forum Éducatif</h1>
+            <p>Un espace d'échange et d'apprentissage pour tous</p>
+            <a href="/threads" class="btn-primary">Découvrir les sujets</a>
+        </section>
+
+        <section class="features">
+            <div class="feature-card">
+                <h3>Discutez</h3>
+                <p>Échangez vos idées et vos connaissances avec d'autres apprenants</p>
+            </div>
+            <div class="feature-card">
+                <h3>Apprenez</h3>
+                <p>Découvrez de nouveaux sujets et approfondissez vos connaissances</p>
+            </div>
+            <div class="feature-card">
+                <h3>Partagez</h3>
+                <p>Contribuez à la communauté en partageant votre expertise</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Forum Éducatif. Tous droits réservés.</p>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

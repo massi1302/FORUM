@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Forum Éducatif</div>
+            <ul class="nav-links">
+                <li><a href="/">Accueil</a></li>
+                <li><a href="/threads">Sujets</a></li>
+                <li class="auth-links">
+                    <a href="/login" class="active">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="auth-container">
+            <h2>Connexion</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="identifier">Email ou nom d'utilisateur</label>
+                    <input type="text" id="identifier" name="identifier" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="error-message" id="error-message"></div>
+                <button type="submit" class="btn-primary">Se connecter</button>
+            </form>
+            <p class="auth-link">Pas encore de compte ? <a href="/register">S'inscrire</a></p>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Forum Éducatif. Tous droits réservés.</p>
+    </footer>
+
+    <script src="/static/js/auth.js"></script>
+</body>
+</html>

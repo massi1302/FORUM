@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Forum Éducatif</div>
+            <ul class="nav-links">
+                <li><a href="/">Accueil</a></li>
+                <li><a href="/threads" class="active">Sujets</a></li>
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                <li class="user-links hidden">
+                    <a href="/profile">Mon profil</a>
+                    <a href="#" id="logout-btn">Déconnexion</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="threads-header">
+                <h1>Tous les sujets</h1>
+                <button class="btn-primary new-thread-btn hidden">Nouveau sujet</button>
+            </div>
+
+            <div class="search-filter">
+                <input type="text" placeholder="Rechercher un sujet..." id="search-thread">
+                <select id="filter-tag">
+                    <option value="">Tous les tags</option>
+                    <!-- Tags seront chargés dynamiquement -->
+                </select>
+            </div>
+
+            <div class="thread-list" id="thread-list">
+                <!-- Les threads seront chargés dynamiquement -->
+                <div class="loading">Chargement des sujets...</div>
+            </div>
+        </div>
+
+        <!-- Modal pour créer un nouveau sujet -->
+        <div class="modal" id="new-thread-modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Créer un nouveau sujet</h2>
+                <form id="new-thread-form">
+                    <div class="form-group">
+                        <label for="title">Titre</label>
+                        <input type="text" id="title" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="content">Contenu</label>
+                        <textarea id="content" name="content" rows="6" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="tags">Tags (séparés par des virgules)</label>
+                        <input type="text" id="tags" name="tags">
+                    </div>
+                    <button type="submit" class="btn-primary">Créer</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Forum Éducatif. Tous droits réservés.</p>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
