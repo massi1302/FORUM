@@ -1,59 +1,45 @@
-# Academic Discussion Forum
+# Forum de discussion académique
 
-A sophisticated platform designed to facilitate academic discussions and knowledge sharing among students, researchers, and educators.
+Une plateforme sophistiquée conçue pour faciliter les discussions académiques et le partage de connaissances entre étudiants, chercheurs et enseignants.
 
-## Features
+## Fonctionnalités
 
-- **Structured Discussions**: Organize conversations by academic topics and disciplines
-- **User Authentication**: Secure login and registration system
-- **Thread Management**: Create, edit, and moderate discussion threads
-- **Interactive Responses**: Reply to threads and engage in academic discourse
-- **Voting System**: Highlight valuable contributions through community voting
-- **Tag System**: Categorize discussions for easy navigation
-- **Search Functionality**: Find relevant discussions and resources
-- **Responsive Design**: Access the forum on any device
+- **Discussions structurées** : Organisez les conversations par sujets et disciplines académiques
+- **Authentification utilisateur** : Système de connexion et d'inscription sécurisé
+- **Gestion des fils de discussion** : Créez, modifiez et modérez des fils de discussion
+- **Réponses interactives** : Répondez aux fils de discussion et participez aux discussions académiques
+- **Système de vote** : Mettez en avant les contributions pertinentes grâce au vote de la communauté
+- **Système de tags** : Catégorisez les discussions pour une navigation simplifiée
+- **Fonctionnalité de recherche** : Trouvez des discussions et des ressources pertinentes
+- **Conception réactive** : Accédez au forum sur n'importe quel appareil
 
-## Technical Stack
+## Pile technique
 
-- **Backend**: Go with Gin framework
-- **Database**: MySQL with GORM
-- **Authentication**: JWT-based authentication
-- **Frontend**: HTML, CSS, JavaScript
+- **Backend** : Utilisez le framework Gin
+- **Base de données** : MySQL avec GORM
+- **Authentification** : Authentification basée sur JWT
+- **Frontend** : HTML, CSS, JavaScript
 
-## Getting Started
+## Prise en main
 
-1. Clone the repository
-2. Set up environment variables in `.env`
-3. Install dependencies
-4. Run the application:
-   ```bash
-   go run main.go
-   ```
+1. Clonez le dépôt
+2. Configurez les variables d'environnement dans « .env »
+3. Installez les dépendances
+4. Exécutez l'application :
+« bash »
+go run main.go
 
-## Environment Variables
 
-Create a `.env` file with the following variables:
+## Variables d'environnement
+
+Créez un fichier `.env` avec les variables suivantes :
+
 ```
 DB_HOST=localhost
 DB_PORT=3306
-DB_USER=your_username
-DB_PASSWORD=your_password
+DB_USER=votre_nom_d'utilisateur
+DB_PASSWORD=votre_mot_de_passe
 DB_NAME=forum_educatif
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=votre_secret_jwt
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support, please open an issue in the repository or contact the maintainers.
