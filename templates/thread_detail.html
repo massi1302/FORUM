@@ -10,45 +10,146 @@
     <header>
         <nav>
             <div class="logo">Forum Éducatif</div>
+            <div class="search-container">
+    <form action="/search" method="get">
+        <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}">
+        <button type="submit"><i class="fa fa-search"></i></button>
+    </form>
+</div>
             <ul class="nav-links">
                 <li><a href="/">Accueil</a></li>
                 <li><a href="/threads">Sujets</a></li>
-                <li class="auth-links">
-                    <a href="/login">Connexion</a>
-                    <a href="/register" class="btn-primary">Inscription</a>
-                </li>
-                <li class="user-links hidden">
-                    <a href="/profile">Mon profil</a>
-                    <a href="#" id="logout-btn">Déconnexion</a>
-                </li>
+             {{ if .isLoggedIn }}
+<li class="user-links">
+    <a href="/profile">Mon profil</a>
+    <a href="/logout">Déconnexion</a>
+</li>
+{{ else }}
+<li class="auth-links">
+    <a href="/login">Connexion</a>
+    <a href="/register" class="btn-primary">Inscription</a>
+</li>
+{{ end }}
             </ul>
         </nav>
     </header>
 
     <main>
         <div class="container">
-            <div class="thread-detail" id="thread-detail">
-                <!-- Le thread sera chargé dynamiquement -->
-                <div class="loading">Chargement du sujet...</div>
+            <div class="thread-detail">
+                <h1>{{ .thread.Title }}</h1>
+                <div class="thread-meta">
+                    <span>Par {{ .thread.User.Username }}</span>
+                    <span>{{ .thread.CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                    <div class="thread-categories">
+    <span class="category-label">Catégorie :</span>
+    <a href="/category/{{ .thread.CategoryID }}" class="category-tag">{{ .thread.Category.Name }}</a>
+</div>
+
+{{ if .thread.Tags }}
+<div class="thread-tags">
+    <span class="tag-label">Tags :</span>
+    {{ range .thread.Tags }}
+        <a href="/tag/{{ .ID }}" class="tag">{{ .Name }}</a>
+    {{ end }}
+</div>
+{{ end }}
+                </div>
+                <div class="thread-content">
+                    <p>{{ .thread.Content }}</p>
+                </div>
             </div>
 
             <div class="messages-container">
                 <h2>Messages</h2>
+                <div class="message-sort">
+    <span>Trier par :</span>
+    <a href="/thread/{{ .id }}?sort=recent" class="{{ if eq .sortBy "recent" }}active{{ end }}">Plus récents</a>
+    <a href="/thread/{{ .id }}?sort=popular" class="{{ if eq .sortBy "popular" }}active{{ end }}">Popularité</a>
+</div>
                 <div id="messages-list">
-                    <!-- Les messages seront chargés dynamiquement -->
-                    <div class="loading">Chargement des messages...</div>
+                    {{ if not .thread.Messages }}
+                        <p>Aucun message pour le moment. Soyez le premier à répondre!</p>
+                    {{ else }}
+                        {{ range .thread.Messages }}
+                            <div class="message-card" data-id="{{ .ID }}">
+                                <div class="message-header">
+                                    <span class="message-author">{{ .User.Username }}</span>
+                                    <span class="message-date">{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                                </div>
+                                <div class="message-content">
+                                    <p>{{ .Content }}</p>
+                                </div>
+                                <div class="message-actions">
+                                    <div class="vote-buttons">
+                                        <form action="/api/messages/{{ .ID }}/vote" method="post" class="vote-form">
+                                            <input type="hidden" name="Value" value="1">
+                                            <button type="submit" class="vote-up">👍</button>
+                                        </form>
+                                        <span class="vote-count">{{ .VoteCount }}</span>
+                                        <form action="/api/messages/{{ .ID }}/vote" method="post" class="vote-form">
+                                            <input type="hidden" name="Value" value="-1">
+                                            <button type="submit" class="vote-down">👎</button>
+                                        </form>
+                                    </div>
+                                    {{ if or $.isAdmin (eq $.userID .UserID) }}
+<div class="message-admin-controls">
+    <a href="/message/{{ .ID }}/edit" class="btn-secondary btn-sm">Modifier</a>
+    <form action="/message/{{ .ID }}/delete" method="post" class="inline-form">
+        <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?')">Supprimer</button>
+    </form>
+</div>
+{{ end }}
+                                </div>
+                            </div>
+                        {{ end }}
+                    {{ end }}
                 </div>
-
-                <div class="new-message-form hidden">
-                    <h3>Répondre</h3>
-                    <form id="new-message-form">
-                        <div class="form-group">
-                            <label for="message-content">Votre message</label>
-                            <textarea id="message-content" name="content" rows="4" required></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary">Envoyer</button>
-                    </form>
-                </div>
+{{ if gt .totalPages 1 }}
+<div class="pagination">
+    <div class="page-size">
+        <span>Afficher :</span>
+        <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page=1&size=10" class="{{ if eq .pageSize 10 }}active{{ end }}">10</a>
+        <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page=1&size=20" class="{{ if eq .pageSize 20 }}active{{ end }}">20</a>
+        <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page=1&size=30" class="{{ if eq .pageSize 30 }}active{{ end }}">30</a>
+        <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page=1&size=999999" class="{{ if gt .pageSize 100 }}active{{ end }}">Tous</a>
+    </div>
+    
+    <div class="page-controls">
+        {{ if gt .page 1 }}
+        <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page={{ sub .page 1 }}&size={{ .pageSize }}" class="page-prev">&laquo; Précédent</a>
+        {{ end }}
+        
+        <span class="page-info">Page {{ .page }} sur {{ .totalPages }}</span>
+        
+        {{ if lt .page .totalPages }}
+        <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page={{ add .page 1 }}&size={{ .pageSize }}" class="page-next">Suivant &raquo;</a>
+        {{ end }}
+    </div>
+</div>
+{{ end }}
+               {{ if .isLoggedIn }}
+<div class="new-message-form">
+    <h3>Répondre</h3>
+    <form action="/form/message" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="ThreadID" value="{{ .thread.ID }}">
+        <div class="form-group">
+            <label for="message-content">Votre message</label>
+            <textarea id="message-content" name="Content" rows="4" required></textarea>
+        </div>
+        <div class="form-group">
+            <label for="message-image">Image (optionnelle)</label>
+            <input type="file" id="message-image" name="Image" accept="image/*">
+            <small>Formats acceptés : JPG, PNG, GIF. Taille max : 5 Mo</small>
+        </div>
+        <button type="submit" class="btn-primary">Envoyer</button>
+    </form>
+</div>
+{{ else }}
+<div class="login-prompt">
+    <p>Vous devez être <a href="/login">connecté</a> pour répondre à ce sujet.</p>
+</div>
+{{ end }}
             </div>
         </div>
     </main>
@@ -56,7 +157,5 @@
     <footer>
         <p>&copy; 2025 Forum Éducatif. Tous droits réservés.</p>
     </footer>
-
-    <script src="/static/js/thread.js"></script>
 </body>
 </html>

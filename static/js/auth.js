@@ -35,7 +35,7 @@ async function login() {
         return;
     }
 
-    try {
+       try {
         const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: {
@@ -56,6 +56,7 @@ async function login() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
+        // Redirection après connexion
         window.location.href = '/';
     } catch (error) {
         console.error('Erreur:', error);

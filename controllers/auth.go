@@ -1,11 +1,14 @@
 package controllers
 
 import (
-	"fmt"
+	"fmt" // Ajoutez cet import
 	"forum-educatif/models"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,6 +16,10 @@ import (
 )
 
 var DB *gorm.DB
+
+func InitDB(db *gorm.DB) {
+	DB = db
+}
 
 func Register(c *gin.Context) {
 	var user models.User
@@ -23,7 +30,34 @@ func Register(c *gin.Context) {
 
 	// Password validation
 	if len(user.Password) < 12 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Password must be at least 12 characters"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Le mot de passe doit comporter au moins 12 caractères"})
+		return
+	}
+
+	// Vérifier la présence d'une majuscule
+	hasUpperCase := false
+	for _, char := range user.Password {
+		if unicode.IsUpper(char) {
+			hasUpperCase = true
+			break
+		}
+	}
+	if !hasUpperCase {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Le mot de passe doit contenir au moins une majuscule"})
+		return
+	}
+
+	// Vérifier la présence d'un caractère spécial
+	hasSpecialChar := false
+	specialChars := "!@#$%^&*()_+-=[]{}|;:,.<>?/"
+	for _, char := range user.Password {
+		if strings.ContainsRune(specialChars, char) {
+			hasSpecialChar = true
+			break
+		}
+	}
+	if !hasSpecialChar {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Le mot de passe doit contenir au moins un caractère spécial"})
 		return
 	}
 
@@ -32,6 +66,8 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not hash password"})
 		return
 	}
+
+	user.LastLogin = time.Now()
 
 	// Create user
 	if err := DB.Create(&user).Error; err != nil {
@@ -79,6 +115,8 @@ func Login(c *gin.Context) {
 	// Update last login
 	user.LastLogin = time.Now()
 	DB.Save(&user)
+
+	c.SetCookie("token", tokenString, 3600*24, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
@@ -180,7 +218,14 @@ func CreateThread(c *gin.Context) {
 		return
 	}
 
-	thread.UserID = userID.(uint)
+	// Conversion correcte de float64 à uint
+	floatID, ok := userID.(float64)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+	thread.UserID = uint(floatID)
+
 	if err := DB.Create(&thread).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create thread"})
 		return
@@ -193,10 +238,38 @@ func GetThread(c *gin.Context) {
 	threadID := c.Param("id")
 	var thread models.Thread
 
-	if err := DB.Preload("User").Preload("Messages").First(&thread, threadID).Error; err != nil {
+	// Récupérer le paramètre de tri
+	sortBy := c.DefaultQuery("sort", "recent") // Par défaut, tri par date
+
+	// Charger le thread avec ses messages
+	if err := DB.Preload("User").First(&thread, threadID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Thread not found"})
 		return
 	}
+
+	// Charger les messages selon le tri demandé
+	var messages []models.Message
+
+	if sortBy == "popular" {
+		// Tri par popularité (likes - dislikes)
+		DB.Model(&models.Message{}).
+			Select("messages.*, COALESCE(SUM(votes.value), 0) as vote_count").
+			Joins("LEFT JOIN votes ON votes.message_id = messages.id").
+			Where("messages.thread_id = ?", threadID).
+			Group("messages.id").
+			Order("vote_count DESC").
+			Preload("User").
+			Find(&messages)
+	} else {
+		// Tri chronologique (du plus récent au plus ancien)
+		DB.Where("thread_id = ?", threadID).
+			Order("created_at DESC").
+			Preload("User").
+			Find(&messages)
+	}
+
+	// Assigner les messages au thread
+	thread.Messages = messages
 
 	c.JSON(http.StatusOK, thread)
 }
@@ -213,24 +286,70 @@ func GetThreads(c *gin.Context) {
 
 func CreateMessage(c *gin.Context) {
 	var message models.Message
-	if err := c.ShouldBindJSON(&message); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+
+	// Vérifier le type de contenu
+	contentType := c.GetHeader("Content-Type")
+	if contentType == "application/json" {
+		if err := c.ShouldBindJSON(&message); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		// Traitement du formulaire HTML
+		threadIDStr := c.PostForm("ThreadID")
+		content := c.PostForm("Content")
+
+		if threadIDStr == "" || content == "" {
+			c.Redirect(http.StatusFound, "/threads")
+			return
+		}
+
+		threadID, err := strconv.Atoi(threadIDStr)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/threads")
+			return
+		}
+
+		message.ThreadID = uint(threadID)
+		message.Content = content
 	}
 
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		if contentType == "application/json" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		} else {
+			c.Redirect(http.StatusFound, "/login")
+		}
 		return
 	}
 
-	message.UserID = userID.(uint)
+	// Conversion correcte de float64 à uint
+	floatID, ok := userID.(float64)
+	if !ok {
+		if contentType == "application/json" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		} else {
+			c.Redirect(http.StatusFound, "/threads")
+		}
+		return
+	}
+	message.UserID = uint(floatID)
+
 	if err := DB.Create(&message).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create message"})
+		if contentType == "application/json" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create message"})
+		} else {
+			c.Redirect(http.StatusFound, "/threads")
+		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, message)
+	if contentType == "application/json" {
+		c.JSON(http.StatusCreated, message)
+	} else {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/thread/%d", message.ThreadID))
+	}
 }
 
 func UpdateMessage(c *gin.Context) {
@@ -274,34 +393,124 @@ func DeleteMessage(c *gin.Context) {
 
 func VoteMessage(c *gin.Context) {
 	messageID := c.Param("id")
-	var vote models.Vote
+	threadID := c.PostForm("ThreadID") // Pour rediriger vers la page du thread
 
-	if err := c.ShouldBindJSON(&vote); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	var vote models.Vote
+	var existingVote models.Vote
+
+	// Si la requête est JSON, utiliser ShouldBindJSON
+	contentType := c.GetHeader("Content-Type")
+	if contentType == "application/json" {
+		if err := c.ShouldBindJSON(&vote); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		// Sinon, c'est un formulaire HTML
+		valueStr := c.PostForm("Value")
+		value, err := strconv.Atoi(valueStr)
+		if err != nil {
+			if c.GetHeader("Accept") == "application/json" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vote value"})
+			} else {
+				c.Redirect(http.StatusFound, "/thread/"+threadID)
+			}
+			return
+		}
+		vote.Value = value
 	}
 
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		} else {
+			c.Redirect(http.StatusFound, "/login")
+		}
 		return
 	}
-	vote.UserID = userID.(uint)
+
+	// Conversion correcte de float64 à uint
+	floatID, ok := userID.(float64)
+	if !ok {
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		} else {
+			c.Redirect(http.StatusFound, "/thread/"+threadID)
+		}
+		return
+	}
+	vote.UserID = uint(floatID)
 
 	// Convert messageID from string to uint
 	var msgIDUint uint
 	if _, err := fmt.Sscanf(messageID, "%d", &msgIDUint); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message ID"})
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message ID"})
+		} else {
+			c.Redirect(http.StatusFound, "/thread/"+threadID)
+		}
 		return
 	}
 	vote.MessageID = msgIDUint
 
-	if err := DB.Create(&vote).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not vote on message"})
+	// Vérifier si l'utilisateur a déjà voté pour ce message
+	result := DB.Where("message_id = ? AND user_id = ?", msgIDUint, vote.UserID).First(&existingVote)
+
+	if result.RowsAffected > 0 {
+		// Si le vote existe déjà et a la même valeur, supprimer le vote (annulation)
+		if existingVote.Value == vote.Value {
+			if err := DB.Delete(&existingVote).Error; err != nil {
+				if c.GetHeader("Accept") == "application/json" {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not remove vote"})
+				} else {
+					c.Redirect(http.StatusFound, "/thread/"+threadID)
+				}
+				return
+			}
+
+			if c.GetHeader("Accept") == "application/json" {
+				c.JSON(http.StatusOK, gin.H{"message": "Vote removed"})
+			} else {
+				c.Redirect(http.StatusFound, "/thread/"+threadID)
+			}
+			return
+		}
+
+		// Si le vote existe mais avec une valeur différente, mettre à jour le vote
+		existingVote.Value = vote.Value
+		if err := DB.Save(&existingVote).Error; err != nil {
+			if c.GetHeader("Accept") == "application/json" {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update vote"})
+			} else {
+				c.Redirect(http.StatusFound, "/thread/"+threadID)
+			}
+			return
+		}
+
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusOK, existingVote)
+		} else {
+			c.Redirect(http.StatusFound, "/thread/"+threadID)
+		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, vote)
+	// Sinon, créer un nouveau vote
+	if err := DB.Create(&vote).Error; err != nil {
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not vote on message"})
+		} else {
+			c.Redirect(http.StatusFound, "/thread/"+threadID)
+		}
+		return
+	}
+
+	if c.GetHeader("Accept") == "application/json" {
+		c.JSON(http.StatusCreated, vote)
+	} else {
+		c.Redirect(http.StatusFound, "/thread/"+threadID)
+	}
 }
 
 func DeleteThread(c *gin.Context) {
@@ -319,4 +528,67 @@ func DeleteThread(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Thread deleted successfully"})
+}
+
+func GetMessageVotes(c *gin.Context) {
+	messageID := c.Param("id")
+	var total int64
+
+	// Calculer le total des votes (positifs moins négatifs)
+	if err := DB.Model(&models.Vote{}).
+		Where("message_id = ?", messageID).
+		Select("COALESCE(SUM(value), 0) as total").
+		Scan(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get votes"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"total": total})
+}
+
+func HandleMessageForm(c *gin.Context) {
+	// Récupérer le token et l'ID utilisateur du contexte
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Récupérer les données du formulaire
+	threadIDStr := c.PostForm("ThreadID")
+	content := c.PostForm("Content")
+
+	if threadIDStr == "" || content == "" {
+		c.Redirect(http.StatusFound, "/threads")
+		return
+	}
+
+	// Convertir l'ID du thread en uint
+	threadID, err := strconv.Atoi(threadIDStr)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/threads")
+		return
+	}
+
+	// Créer le message
+	var message models.Message
+	message.ThreadID = uint(threadID)
+	message.Content = content
+
+	// Conversion de userID en uint
+	floatID, ok := userID.(float64)
+	if !ok {
+		c.Redirect(http.StatusFound, "/threads")
+		return
+	}
+	message.UserID = uint(floatID)
+
+	// Enregistrer le message
+	if err := DB.Create(&message).Error; err != nil {
+		c.Redirect(http.StatusFound, "/threads")
+		return
+	}
+
+	// Rediriger vers la page du thread
+	c.Redirect(http.StatusFound, fmt.Sprintf("/thread/%d", threadID))
 }

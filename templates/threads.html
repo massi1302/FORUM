@@ -10,6 +10,12 @@
     <header>
         <nav>
             <div class="logo">Forum Éducatif</div>
+            <div class="search-container">
+    <form action="/search" method="get">
+        <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}">
+        <button type="submit"><i class="fa fa-search"></i></button>
+    </form>
+</div>
             <ul class="nav-links">
                 <li><a href="/">Accueil</a></li>
                 <li><a href="/threads" class="active">Sujets</a></li>

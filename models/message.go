@@ -11,6 +11,7 @@ type Message struct {
 	Thread    Thread `gorm:"foreignKey:ThreadID"`
 	Votes     []Vote `gorm:"foreignKey:MessageID"`
 	CreatedAt time.Time
+	VoteCount int `gorm:"-"`
 }
 
 type Vote struct {

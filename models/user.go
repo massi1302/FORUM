@@ -13,7 +13,7 @@ type User struct {
 	Role      string `gorm:"default:user"`
 	Avatar    string `gorm:"default:'default.png'"`
 	Bio       string
-	LastLogin time.Time
+	LastLogin time.Time `gorm:"type:datetime;null"` // Permettre NULL
 	Threads   []Thread  `gorm:"foreignKey:UserID"`
 	Messages  []Message `gorm:"foreignKey:UserID"`
 	CreatedAt time.Time
