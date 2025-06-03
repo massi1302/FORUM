@@ -18,6 +18,8 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	// Servir les fichiers statiques
 	r.Static("/static", "./static")
 
+	r.SetFuncMap(TemplateFuncs)
+
 	// Charger les templates HTML
 	r.LoadHTMLGlob("templates/*")
 

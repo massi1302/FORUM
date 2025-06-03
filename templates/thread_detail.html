@@ -117,7 +117,7 @@
     
     <div class="page-controls">
         {{ if gt .page 1 }}
-        <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page={{ sub .page 1 }}&size={{ .pageSize }}" class="page-prev">&laquo; Précédent</a>
+    <a href="/thread/{{ .thread.ID }}?sort={{ .sortBy }}&page={{ sub .page 1 }}&size={{ .pageSize }}" class="page-prev">&laquo; Précédent</a>
         {{ end }}
         
         <span class="page-info">Page {{ .page }} sur {{ .totalPages }}</span>
