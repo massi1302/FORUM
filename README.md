@@ -28,11 +28,12 @@ Une plateforme sophistiquée conçue pour faciliter les discussions académiques
 4. Exécutez l'application :
 « bash »
 go run main.go
-```
+
 
 ## Variables d'environnement
 
 Créez un fichier `.env` avec les variables suivantes :
+
 ```
 DB_HOST=localhost
 DB_PORT=3306
