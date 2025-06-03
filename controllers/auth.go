@@ -206,8 +206,15 @@ func UpdateThread(c *gin.Context) {
 }
 
 func CreateThread(c *gin.Context) {
-	var thread models.Thread
-	if err := c.ShouldBindJSON(&thread); err != nil {
+	// Structure pour la désérialisation des données reçues
+	var threadRequest struct {
+		Title      string   `json:"Title"`
+		Content    string   `json:"Content"`
+		Tags       []string `json:"Tags"`
+		CategoryID uint     `json:"CategoryID"`
+	}
+
+	if err := c.ShouldBindJSON(&threadRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -218,18 +225,109 @@ func CreateThread(c *gin.Context) {
 		return
 	}
 
+	// Débogage : afficher le type et la valeur de userID
+	fmt.Printf("Type de userID: %T, Valeur: %v\n", userID, userID)
+
 	// Conversion correcte de float64 à uint
 	floatID, ok := userID.(float64)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-		return
+		// Essayer de convertir à partir d'autres types possibles
+		switch v := userID.(type) {
+		case float64:
+			floatID = v
+		case int:
+			floatID = float64(v)
+		case int64:
+			floatID = float64(v)
+		case uint:
+			floatID = float64(v)
+		case uint64:
+			floatID = float64(v)
+		case string:
+			var err error
+			floatID, err = strconv.ParseFloat(v, 64)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+				return
+			}
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+			return
+		}
 	}
-	thread.UserID = uint(floatID)
 
-	if err := DB.Create(&thread).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create thread"})
+	var user models.User
+	if err := DB.First(&user, uint(floatID)).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Referenced user does not exist"})
 		return
 	}
+
+	// Création du thread
+	thread := models.Thread{
+		Title:     threadRequest.Title,
+		Content:   threadRequest.Content,
+		UserID:    user.ID,
+		AuthorID:  user.ID,
+		Status:    "open",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Ajout de la catégorie si spécifiée
+	if threadRequest.CategoryID == 0 {
+		thread.CategoryID = 1
+	}
+
+	// Traitement des tags
+	var tags []models.Tag
+	for _, tagName := range threadRequest.Tags {
+		if tagName == "" {
+			continue // Ignorer les tags vides
+		}
+
+		// Rechercher si le tag existe déjà
+		var tag models.Tag
+		result := DB.Where("name = ?", tagName).First(&tag)
+
+		if result.Error != nil {
+			// Si le tag n'existe pas, on le crée
+			tag = models.Tag{
+				Name:      tagName,
+				CreatedAt: time.Now(),
+			}
+			if err := DB.Create(&tag).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create tag"})
+				return
+			}
+		}
+
+		tags = append(tags, tag)
+	}
+
+	// Transaction pour s'assurer que tout est enregistré correctement
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		// Créer le thread
+		if err := tx.Create(&thread).Error; err != nil {
+			return err
+		}
+
+		// Associer les tags au thread
+		if len(tags) > 0 {
+			if err := tx.Model(&thread).Association("Tags").Append(tags); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create thread: " + err.Error()})
+		return
+	}
+
+	// Charger les tags pour la réponse
+	DB.Model(&thread).Association("Tags").Find(&thread.Tags)
 
 	c.JSON(http.StatusCreated, thread)
 }

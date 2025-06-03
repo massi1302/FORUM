@@ -22,6 +22,8 @@ type Thread struct {
 	CategoryID uint      `gorm:"type:int unsigned"`
 	Category   Category  `gorm:"foreignKey:CategoryID"`
 	Tags       []Tag     `gorm:"many2many:thread_tags;"`
+	AuthorID   uint      `gorm:"column:author_id"`
+	Author     User      `gorm:"foreignKey:AuthorID"`
 }
 
 type Category struct {

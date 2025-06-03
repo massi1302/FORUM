@@ -15,6 +15,13 @@ CREATE TABLE tags (
     name VARCHAR(255) UNIQUE NOT NULL
 );
 
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE threads (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -22,6 +29,7 @@ CREATE TABLE threads (
     status VARCHAR(50) DEFAULT 'open',
     visibility VARCHAR(50) DEFAULT 'public',
     author_id INTEGER REFERENCES users(id),
+    category_id INTEGER REFERENCES categories(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

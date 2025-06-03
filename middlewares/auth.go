@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"forum-educatif/models"
 	"net/http"
 	"os"
@@ -112,9 +113,10 @@ func SetUserToken() gin.HandlerFunc {
 			if err == nil && token.Valid {
 				claims, ok := token.Claims.(jwt.MapClaims)
 				if ok {
+					fmt.Printf("Type de claims[\"sub\"]: %T, Valeur: %v\n", claims["sub"], claims["sub"])
 					c.Set("userID", claims["sub"])
 					c.Set("token", tokenString)
-					isLoggedIn = true
+					c.Set("isLoggedIn", true)
 
 					var user models.User
 
