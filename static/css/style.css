@@ -24,7 +24,12 @@ body {
   line-height: 1.7;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
   color: var(--primary);
   margin-bottom: 1rem;
@@ -70,11 +75,9 @@ nav {
   margin: 0 auto;
 }
 
-.logo {
-  font-family: var(--font-heading);
-  font-size: 1.75rem;
-  font-weight: bold;
-  color: var(--primary);
+.logoImg {
+  height: 50px;
+  width: 90px;
 }
 
 .nav-links {
