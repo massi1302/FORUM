@@ -42,18 +42,3 @@ DB_NAME=forum_educatif
 JWT_SECRET=votre_secret_jwt
 ```
 
-## Contribution
-
-1. Forker le dépôt
-2. Créer une branche de fonctionnalité
-3. Valider les modifications
-4. Envoyer vers la branche
-5. Créer une demande de tirage
-
-## Licence
-
-Ce projet est sous licence MIT ; consultez le fichier LICENSE pour plus de détails.
-
-## Assistance
-
-Pour obtenir de l'aide, veuillez ouvrir un ticket dans le dépôt ou contacter les mainteneurs.
