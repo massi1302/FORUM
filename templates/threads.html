@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .title }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="../static/css/main.css">
+    <link rel="stylesheet" href="../static/css/threads.css">
 </head>
 
 <body>
@@ -44,17 +45,14 @@
                 <input type="text" placeholder="Rechercher un sujet..." id="search-thread">
                 <select id="filter-tag">
                     <option value="">Tous les tags</option>
-                    <!-- Tags seront chargés dynamiquement -->
                 </select>
             </div>
 
             <div class="thread-list" id="thread-list">
-                <!-- Les threads seront chargés dynamiquement -->
                 <div class="loading">Chargement des sujets...</div>
             </div>
         </div>
 
-        <!-- Modal pour créer un nouveau sujet -->
         <div class="modal" id="new-thread-modal">
             <div class="modal-content">
                 <span class="close">&times;</span>

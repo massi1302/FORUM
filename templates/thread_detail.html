@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .title }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="../static/css/main.css">
+    <link rel="stylesheet" href="../static/css/thread_detail.css">
 </head>
 
 <body>
@@ -113,6 +114,7 @@
                     {{ end }}
                     {{ end }}
                 </div>
+
                 {{ if gt .totalPages 1 }}
                 <div class="pagination">
                     <div class="page-size">
@@ -142,6 +144,7 @@
                     </div>
                 </div>
                 {{ end }}
+
                 {{ if .isLoggedIn }}
                 <div class="new-message-form">
                     <h3>Répondre</h3>
