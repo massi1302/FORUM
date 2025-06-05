@@ -3,6 +3,8 @@ package controllers
 import (
 	"fmt" // Ajoutez cet import
 	"forum-educatif/models"
+	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -22,60 +24,85 @@ func InitDB(db *gorm.DB) {
 }
 
 func Register(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var request struct {
+		Username string `json:"username" binding:"required"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Password validation
-	if len(user.Password) < 12 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Le mot de passe doit comporter au moins 12 caractères"})
+	// Vérifier la complexité du mot de passe
+	if len(request.Password) < 12 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Le mot de passe doit contenir au moins 12 caractères"})
 		return
 	}
 
-	// Vérifier la présence d'une majuscule
-	hasUpperCase := false
-	for _, char := range user.Password {
+	var hasUpper, hasSpecial bool
+	for _, char := range request.Password {
 		if unicode.IsUpper(char) {
-			hasUpperCase = true
-			break
+			hasUpper = true
+		}
+		if unicode.IsPunct(char) || unicode.IsSymbol(char) {
+			hasSpecial = true
 		}
 	}
-	if !hasUpperCase {
+
+	if !hasUpper {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Le mot de passe doit contenir au moins une majuscule"})
 		return
 	}
 
-	// Vérifier la présence d'un caractère spécial
-	hasSpecialChar := false
-	specialChars := "!@#$%^&*()_+-=[]{}|;:,.<>?/"
-	for _, char := range user.Password {
-		if strings.ContainsRune(specialChars, char) {
-			hasSpecialChar = true
-			break
-		}
-	}
-	if !hasSpecialChar {
+	if !hasSpecial {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Le mot de passe doit contenir au moins un caractère spécial"})
 		return
 	}
 
-	// Hash password
-	if err := user.HashPassword(user.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not hash password"})
+	// Vérifier si le nom d'utilisateur existe déjà
+	var existingUser models.User
+	if result := DB.Where("username = ?", request.Username).First(&existingUser); result.Error == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ce nom d'utilisateur est déjà utilisé"})
 		return
 	}
 
-	user.LastLogin = time.Now()
+	// Vérifier si l'email existe déjà
+	if result := DB.Where("email = ?", request.Email).First(&existingUser); result.Error == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cette adresse email est déjà utilisée"})
+		return
+	}
 
-	// Create user
+	// Créer l'utilisateur
+	user := models.User{
+		Username:  request.Username,
+		Email:     request.Email,
+		CreatedAt: time.Now(),
+	}
+
+	if err := user.HashPassword(request.Password); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors du hachage du mot de passe"})
+		return
+	}
+
 	if err := DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create user"})
+
+		if strings.Contains(err.Error(), "Duplicate entry") {
+			if strings.Contains(err.Error(), "username") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Ce nom d'utilisateur est déjà utilisé"})
+			} else if strings.Contains(err.Error(), "email") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Cette adresse email est déjà utilisée"})
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Violation de contrainte d'unicité"})
+			}
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la création de l'utilisateur"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"message": "Utilisateur créé avec succès", "id": user.ID})
 }
 
 func Login(c *gin.Context) {
@@ -89,14 +116,27 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := DB.Where("username = ? OR email = ?", credentials.Identifier, credentials.Identifier).First(&user).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	// Vérifier que l'identifiant n'est pas vide
+	if credentials.Identifier == "" || credentials.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "L'identifiant et le mot de passe sont requis"})
 		return
 	}
 
-	if err := user.CheckPassword(credentials.Password); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+	var user models.User
+	result := DB.Where("username = ? OR email = ?", credentials.Identifier, credentials.Identifier).First(&user)
+
+	if result.Error != nil || user.CheckPassword(credentials.Password) != nil {
+
+		if result.Error != nil {
+			log.Printf("Échec de connexion: utilisateur non trouvé pour l'identifiant %s", credentials.Identifier)
+
+			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+		} else {
+			log.Printf("Échec de connexion: mot de passe incorrect pour l'utilisateur %s", user.Username)
+		}
+
+		// Réponse générique pour le client
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Identifiant ou mot de passe incorrect"})
 		return
 	}
 
@@ -104,6 +144,7 @@ func Login(c *gin.Context) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"iat": time.Now().Unix(), // Ajout de la date d'émission
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -112,11 +153,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Update last login
 	user.LastLogin = time.Now()
 	DB.Save(&user)
-
-	c.SetCookie("token", tokenString, 3600*24, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
@@ -127,6 +165,13 @@ func Login(c *gin.Context) {
 			"role":     user.Role,
 		},
 	})
+}
+
+// Fonction utilitaire pour générer un refresh token
+func generateRefreshToken() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
 }
 
 func GetAllUsers(c *gin.Context) {
