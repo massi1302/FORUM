@@ -62,11 +62,17 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	r.GET("/threads", func(c *gin.Context) {
 		token, _ := c.Get("token")
 		_, isLoggedIn := c.Get("userID")
+		var categories []models.Category
+		if err := database.DB.Find(&categories).Error; err != nil {
+			// En cas d'erreur, continuer avec une liste vide de catégories
+			categories = []models.Category{}
+		}
 
 		c.HTML(http.StatusOK, "threads.html", gin.H{
 			"title":      "Tous les sujets",
 			"token":      token,
 			"isLoggedIn": isLoggedIn,
+			"categories": categories,
 		})
 	})
 

@@ -60,15 +60,18 @@
             <div class="modal-content">
                 <span class="close">&times;</span>
                 <h2>Créer un nouveau sujet</h2>
-                  <div class="form-group">
+                  
+                <form id="new-thread-form">
+                    <div class="form-group">
+                       <div class="form-group">
     <label for="category">Catégorie</label>
     <select id="category" name="CategoryID" class="form-control">
         <option value="0">Sélectionner une catégorie</option>
-        <!-- Les options seront chargées dynamiquement -->
+        {{ range .categories }}
+            <option value="{{ .ID }}">{{ .Name }}</option>
+        {{ end }}
     </select>
 </div>
-                <form id="new-thread-form">
-                    <div class="form-group">
                         <label for="title">Titre</label>
                         <input type="text" id="title" name="title" required>
                     </div>
