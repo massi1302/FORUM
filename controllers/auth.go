@@ -275,7 +275,29 @@ func CreateThread(c *gin.Context) {
 
 	// Ajout de la catégorie si spécifiée
 	if threadRequest.CategoryID == 0 {
-		thread.CategoryID = 1
+		// Récupérer la première catégorie (Général)
+		var defaultCategory models.Category
+		if err := DB.First(&defaultCategory).Error; err != nil {
+			// Si aucune catégorie n'existe, en créer une
+			defaultCategory = models.Category{
+				Name:        "Général",
+				Description: "Discussions générales",
+				CreatedAt:   time.Now(),
+			}
+			if err := DB.Create(&defaultCategory).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create default category"})
+				return
+			}
+		}
+		thread.CategoryID = defaultCategory.ID
+	} else {
+		// Vérifier si la catégorie spécifiée existe
+		var category models.Category
+		if err := DB.First(&category, threadRequest.CategoryID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Specified category does not exist"})
+			return
+		}
+		thread.CategoryID = threadRequest.CategoryID
 	}
 
 	// Traitement des tags
@@ -330,6 +352,16 @@ func CreateThread(c *gin.Context) {
 	DB.Model(&thread).Association("Tags").Find(&thread.Tags)
 
 	c.JSON(http.StatusCreated, thread)
+}
+
+func GetCategories(c *gin.Context) {
+	var categories []models.Category
+	if err := DB.Find(&categories).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve categories"})
+		return
+	}
+
+	c.JSON(http.StatusOK, categories)
 }
 
 func GetThread(c *gin.Context) {

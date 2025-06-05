@@ -27,6 +27,11 @@ func main() {
 		log.Fatalf("Could not migrate database: %v", err)
 	}
 
+	// Ajouter les catégories par défaut
+	if err := database.EnsureDefaultCategories(); err != nil {
+		log.Printf("Warning: Could not create default categories: %v", err)
+	}
+
 	// IMPORTANT: Initialiser la connexion à la base de données pour les contrôleurs
 	controllers.InitDB(database.DB)
 	middlewares.InitDB(database.DB)

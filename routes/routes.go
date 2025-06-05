@@ -451,5 +451,7 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 		})
 	})
 
+	r.GET("/api/categories", controllers.GetCategories)
+
 	return r
 }

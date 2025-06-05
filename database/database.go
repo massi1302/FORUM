@@ -2,9 +2,11 @@ package database
 
 import (
 	"forum-educatif/models"
+	"os"
+	"time"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"os"
 )
 
 var DB *gorm.DB
@@ -49,4 +51,56 @@ func Migrate() error {
 		&models.Message{},
 		&models.Vote{},
 	)
+}
+
+func EnsureDefaultCategories() error {
+	// Vérifier si des catégories existent déjà
+	var count int64
+	DB.Model(&models.Category{}).Count(&count)
+
+	// Si aucune catégorie n'existe, créer les catégories par défaut
+	if count == 0 {
+		categories := []models.Category{
+			{
+				Name:        "Général",
+				Description: "Discussions générales et sujets divers",
+				CreatedAt:   time.Now(),
+			},
+			{
+				Name:        "Programmation",
+				Description: "Discussions sur les langages de programmation, frameworks et outils de développement",
+				CreatedAt:   time.Now(),
+			},
+			{
+				Name:        "Mathématiques",
+				Description: "Discussions sur les mathématiques, les formules et les théorèmes",
+				CreatedAt:   time.Now(),
+			},
+			{
+				Name:        "Sciences",
+				Description: "Discussions sur la physique, la chimie, la biologie et autres sciences",
+				CreatedAt:   time.Now(),
+			},
+			{
+				Name:        "Langues",
+				Description: "Discussions sur l'apprentissage des langues et la linguistique",
+				CreatedAt:   time.Now(),
+			},
+			{
+				Name:        "Art et Culture",
+				Description: "Discussions sur l'art, la littérature, la musique et la culture",
+				CreatedAt:   time.Now(),
+			},
+			{
+				Name:        "Technologie",
+				Description: "Discussions sur les nouvelles technologies, gadgets et innovations",
+				CreatedAt:   time.Now(),
+			},
+		}
+
+		// Insérer toutes les catégories dans la base de données
+		return DB.Create(&categories).Error
+	}
+
+	return nil
 }

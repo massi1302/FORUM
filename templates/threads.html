@@ -56,9 +56,17 @@
 
         <!-- Modal pour créer un nouveau sujet -->
         <div class="modal" id="new-thread-modal">
+          
             <div class="modal-content">
                 <span class="close">&times;</span>
                 <h2>Créer un nouveau sujet</h2>
+                  <div class="form-group">
+    <label for="category">Catégorie</label>
+    <select id="category" name="CategoryID" class="form-control">
+        <option value="0">Sélectionner une catégorie</option>
+        <!-- Les options seront chargées dynamiquement -->
+    </select>
+</div>
                 <form id="new-thread-form">
                     <div class="form-group">
                         <label for="title">Titre</label>
