@@ -45,7 +45,7 @@
     <main>
         <div class="auth-container">
             <h2>Connexion</h2>
-            <form id="login-form">
+            <form id="login-form" action="/api/auth/login" method="POST">
                 <div class="form-group">
                     <label for="identifier">Email ou nom d'utilisateur</label>
                     <input type="text" id="identifier" name="identifier" required>

@@ -70,10 +70,15 @@ nav {
     border: 2px solid #e9ecef;
     background: #f8f9fa;
     transition: box-shadow 0.2s;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-.accountIcon:hover {
+.accountIcon:hover,
+.accountIcon:focus {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    outline: 2px solid #007BFF;
 }
 
 /* Dropdown menu container */
@@ -82,7 +87,6 @@ nav {
     display: inline-block;
 }
 
-/* Dropdown menu (hidden by default) */
 .dropdown {
     display: none;
     position: absolute;
@@ -95,6 +99,7 @@ nav {
     overflow: hidden;
     z-index: 1000;
     border: 1px solid #e9ecef;
+    transition: opacity 0.2s ease;
 }
 
 /* Dropdown links */
@@ -115,7 +120,11 @@ nav {
 
 /* Show dropdown on hover */
 .menu-container:hover .dropdown,
-.user-links:hover .dropdown {
+.user-links:hover .dropdown,
+.menu-container:focus-within .dropdown,
+.user-links:focus-within .dropdown,
+.dropdown:hover,
+.dropdown:focus-within {
     display: block;
 }
 

@@ -28,7 +28,7 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	// Routes pour les pages HTML
 	r.GET("/", func(c *gin.Context) {
 		token, _ := c.Get("token")
-		_, isLoggedIn := c.Get("userID")
+		isLoggedIn, _ := c.Get("isLoggedIn")
 
 		c.HTML(http.StatusOK, "index.html", gin.H{
 			"title":      "Forum Éducatif - Accueil",
@@ -38,23 +38,28 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	})
 
 	r.GET("/login", func(c *gin.Context) {
-		token, _ := c.Get("token")
-		_, isLoggedIn := c.Get("userID")
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/")
+			return
+		}
 
 		c.HTML(http.StatusOK, "login.html", gin.H{
 			"title":      "Connexion",
-			"token":      token,
-			"isLoggedIn": isLoggedIn,
+			"isLoggedIn": false,
 		})
 	})
 
 	r.GET("/register", func(c *gin.Context) {
-		token, _ := c.Get("token")
-		_, isLoggedIn := c.Get("userID")
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/")
+			return
+		}
+
 		c.HTML(http.StatusOK, "register.html", gin.H{
 			"title":      "Inscription",
-			"token":      token,
-			"isLoggedIn": isLoggedIn,
+			"isLoggedIn": false,
 		})
 	})
 
@@ -183,6 +188,7 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 		{
 			auth.POST("/register", controllers.Register)
 			auth.POST("/login", controllers.Login)
+			//			auth.POST("/logout", controllers.Logout)
 		}
 
 		// Thread routes

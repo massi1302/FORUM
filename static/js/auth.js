@@ -1,11 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Rediriger si déjà connecté
-    const token = localStorage.getItem('token');
-    if (token) {
-        window.location.href = '/';
-        return;
-    }
-
     // Formulaire de connexion
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
