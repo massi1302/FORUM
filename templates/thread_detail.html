@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .title }}</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/header.css">
+
 </head>
 
 <body>
@@ -20,25 +22,23 @@
                     <button type="submit"><i class="fa fa-search"></i></button>
                 </form>
             </div>
-          <ul class="nav-links">
-    <li><a href="/">Accueil</a></li>
-    <li><a href="/threads">Sujets</a></li>
-    {{ if .isLoggedIn }}
-    <li class="user-links">
-        <a href="/profile">Mon profil</a>
-    </li>
-    <li class="user-links">
-        <a href="/logout">Déconnexion</a>
-    </li>
-    {{ else }}
-    <li class="auth-links">
-        <a href="/login">Connexion</a>
-    </li>
-    <li class="auth-links">
-        <a href="/register" class="btn-primary">Inscription</a>
-    </li>
-    {{ end }}
-</ul>
+            <ul class="nav-links">
+                <li><a href="/threads">Sujets</a></li>
+                {{ if .isLoggedIn }}
+                <li class="user-links">
+                    <a href="/"><img class="accountIcon" src="../static/assets/accountIcon.png" alt="Account_Icon"></a>
+                    <div class="dropdown-content">
+                        <a href="/profile">Mon profil</a>
+                        <a href="/logout">Déconnexion</a>
+                    </div>
+                </li>
+                {{ else }}
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                {{ end }}
+            </ul>
         </nav>
     </header>
 
@@ -173,7 +173,27 @@
     </main>
 
     <footer>
-        <p>&copy; 2025 Forum Éducatif. Tous droits réservés.</p>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4>Forum Éducatif</h4>
+                <p>Un espace d’échange et d’apprentissage pour tous les passionnés de savoir.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <ul class="footer-contact">
+                    <li>Email : <a href="mailto:contact@forum-educatif.fr">contact@forum-educatif.fr</a></li>
+                    <li>Adresse : 123 Rue de l'Éducation, Paris</li>
+                </ul>
+                <div class="footer-social">
+                    <a href="#" title="Twitter"><i class="fa fa-twitter"></i></a>
+                    <a href="#" title="Facebook"><i class="fa fa-facebook"></i></a>
+                    <a href="#" title="Instagram"><i class="fa fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Forum Éducatif. Tous droits réservés.
+        </div>
     </footer>
 </body>
 

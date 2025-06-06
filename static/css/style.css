@@ -408,15 +408,6 @@ nav {
   color: white;
 }
 
-/* Footer */
-footer {
-  text-align: center;
-  padding: 3rem;
-  margin-top: 4rem;
-  background-color: var(--card-bg);
-  border-top: 1px solid var(--border);
-  color: var(--text);
-}
 
 /* Responsive Design */
 @media (max-width: 768px) {
