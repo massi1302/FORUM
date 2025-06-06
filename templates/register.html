@@ -7,61 +7,96 @@
     <title>{{ .title }}</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/auth.css">
+    <link rel="stylesheet" href="/static/css/header.css">
+
 </head>
 
 <body>
     <header>
-        <nav>
-            <div class="logo">
-                <a href="/"><img class="logoImg" src="../static/assets/forumLogo.jpg" alt=""></a>
+        <header>
+            <nav>
+                <div class="logo">
+                    <a href="/"><img class="logoImg" src="../static/assets/forumLogo.jpg" alt=""></a>
+                </div>
+                <div class="search-container">
+                    <form action="/search" method="get">
+                        <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="/threads">Sujets</a></li>
+                    {{ if .isLoggedIn }}
+                    <li class="user-links">
+                        <a href="/"><img class="accountIcon" src="../static/assets/accountIcon.png"
+                                alt="Account_Icon"></a>
+                        <div class="dropdown-content">
+                            <a href="/profile">Mon profil</a>
+                            <a href="/logout">Déconnexion</a>
+                        </div>
+                    </li>
+                    {{ else }}
+                    <li class="auth-links">
+                        <a href="/login">Connexion</a>
+                        <a href="/register" class="btn-primary">Inscription</a>
+                    </li>
+                    {{ end }}
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <div class="auth-container">
+                <h2>Inscription</h2>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="username">Nom d'utilisateur</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Mot de passe</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password-confirm">Confirmer le mot de passe</label>
+                        <input type="password" id="password-confirm" name="password_confirm" required>
+                    </div>
+                    <div class="error-message" id="error-message"></div>
+                    <button type="submit" class="btn-primary">S'inscrire</button>
+                </form>
+                <p class="auth-link">Déjà inscrit ? <a href="/login">Se connecter</a></p>
             </div>
-            <ul class="nav-links">
-                <li><a href="/" class="active">Accueil</a></li>
-                <li><a href="/threads">Sujets</a></li>
-                <li><a href="/login">Connexion</a>
-                </li>
-                <li><a href="/register" class="btn-primary">Inscription</a>
-                </li>
-                <li class="user-links hidden">
-                    <a href="/profile">Mon profil</a>
-                    <a href="#" id="logout-btn">Déconnexion</a>
-                </li>
-            </ul>
-        </nav>
-    </header>
+        </main>
 
-    <main>
-        <div class="auth-container">
-            <h2>Inscription</h2>
-            <form id="register-form">
-                <div class="form-group">
-                    <label for="username">Nom d'utilisateur</label>
-                    <input type="text" id="username" name="username" required>
+        <footer>
+            <div class="footer-container">
+                <div class="footer-section">
+                    <h4>Forum Éducatif</h4>
+                    <p>Un espace d’échange et d’apprentissage pour tous les passionnés de savoir.</p>
                 </div>
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <ul class="footer-contact">
+                        <li>Email : <a href="mailto:contact@forum-educatif.fr">contact@forum-educatif.fr</a></li>
+                        <li>Adresse : 123 Rue de l'Éducation, Paris</li>
+                    </ul>
+                    <div class="footer-social">
+                        <a href="#" title="Twitter"><i class="fa fa-twitter"></i></a>
+                        <a href="#" title="Facebook"><i class="fa fa-facebook"></i></a>
+                        <a href="#" title="Instagram"><i class="fa fa-instagram"></i></a>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="password">Mot de passe</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                <div class="form-group">
-                    <label for="password-confirm">Confirmer le mot de passe</label>
-                    <input type="password" id="password-confirm" name="password_confirm" required>
-                </div>
-                <div class="error-message" id="error-message"></div>
-                <button type="submit" class="btn-primary">S'inscrire</button>
-            </form>
-            <p class="auth-link">Déjà inscrit ? <a href="/login">Se connecter</a></p>
-        </div>
-    </main>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2025 Forum Éducatif. Tous droits réservés.
+            </div>
+        </footer>
 
-    <footer>
-        <p>&copy; 2025 Forum Éducatif. Tous droits réservés.</p>
-    </footer>
-
-    <script src="/static/js/auth.js"></script>
+        <script src="/static/js/auth.js"></script>
 </body>
 
 </html>
