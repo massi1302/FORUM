@@ -91,47 +91,57 @@ func Admin() gin.HandlerFunc {
 	}
 }
 
-func SetUserToken() gin.HandlerFunc {
+func SetUserAuthInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		isLoggedIn := false // Par défaut, l'utilisateur n'est pas connecté
+		// Définir isLoggedIn à false par défaut
+		c.Set("isLoggedIn", false)
 
-		// Si l'en-tête Authorization est vide, vérifier les cookies
-		if authHeader == "" {
-			tokenCookie, err := c.Cookie("token")
-			if err == nil {
-				authHeader = "Bearer " + tokenCookie
+		// Chercher le token dans le header d'autorisation
+		tokenString := c.GetHeader("Authorization")
+		if tokenString != "" {
+			// Si le token est dans le header, enlever le préfixe "Bearer "
+			if len(tokenString) > 7 && strings.ToUpper(tokenString[0:7]) == "BEARER " {
+				tokenString = tokenString[7:]
+			}
+		} else {
+			// Si pas dans le header, chercher dans les cookies
+			var err error
+			tokenString, err = c.Cookie("token")
+			if err != nil {
+				// Pas de token, continuer sans authentification
+				c.Next()
+				return
 			}
 		}
 
-		if authHeader != "" {
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				return []byte(os.Getenv("JWT_SECRET")), nil
-			})
-
-			if err == nil && token.Valid {
-				claims, ok := token.Claims.(jwt.MapClaims)
-				if ok {
-					fmt.Printf("Type de claims[\"sub\"]: %T, Valeur: %v\n", claims["sub"], claims["sub"])
-					c.Set("userID", claims["sub"])
-					c.Set("token", tokenString)
-					c.Set("isLoggedIn", true)
-
-					var user models.User
-
-					if sub, ok := claims["sub"].(float64); ok {
-						if DB.First(&user, uint(sub)).Error == nil {
-							c.Set("isAdmin", user.Role == "admin")
-						}
-					}
-
-				}
+		// Valider le token
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+
+		if err != nil || !token.Valid {
+			// Token invalide, continuer sans authentification
+			c.Next()
+			return
 		}
 
-		// Définir isLoggedIn de manière explicite dans le contexte
-		c.Set("isLoggedIn", isLoggedIn)
+		// Token valide, extraire les claims
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			// Définir les variables dans le contexte
+			userID := claims["sub"]
+			c.Set("userID", userID)
+			c.Set("token", tokenString)
+			c.Set("isLoggedIn", true)
+
+			// Vérifier si l'utilisateur est admin (optionnel)
+			var user models.User
+			if err := DB.First(&user, userID).Error; err == nil && user.Role == "admin" {
+				c.Set("isAdmin", true)
+			}
+		}
 
 		c.Next()
 	}

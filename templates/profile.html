@@ -14,14 +14,25 @@
             <div class="logo">
                 <a href="/"><img class="logoImg" src="../static/assets/forumLogo.jpg" alt=""></a>
             </div>
-            <ul class="nav-links">
-                <li><a href="/">Accueil</a></li>
-                <li><a href="/threads">Sujets</a></li>
-                <li class="user-links">
-                    <a href="/profile" class="active">Mon profil</a>
-                    <a href="#" id="logout-btn">Déconnexion</a>
-                </li>
-            </ul>
+           <ul class="nav-links">
+    <li><a href="/">Accueil</a></li>
+    <li><a href="/threads">Sujets</a></li>
+    {{ if .isLoggedIn }}
+    <li class="user-links">
+        <a href="/profile">Mon profil</a>
+    </li>
+    <li class="user-links">
+        <a href="/logout" id="logout-link">Déconnexion</a>
+    </li>
+    {{ else }}
+    <li class="auth-links">
+        <a href="/login">Connexion</a>
+    </li>
+    <li class="auth-links">
+        <a href="/register" class="btn-primary">Inscription</a>
+    </li>
+    {{ end }}
+</ul>
         </nav>
     </header>
 
@@ -30,9 +41,9 @@
             <div class="profile-header">
                 <img src="/static/img/default.png" alt="Avatar" class="profile-avatar" id="user-avatar">
                 <div class="profile-info">
-                    <h2 id="username">Chargement...</h2>
-                    <p id="user-email">Chargement...</p>
-                    <p id="user-bio">Chargement...</p>
+                    <h2 id="username">A FAIRE</h2>
+                    <p id="user-email">A FAIRE</p>
+                    <p id="user-bio">A FAIRE</p>
 
                     <div class="profile-stats">
                         <div class="stat-item">

@@ -23,8 +23,7 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	// Charger les templates HTML
 	r.LoadHTMLGlob("templates/*")
 
-	// Appliquer le middleware SetUserToken à TOUTES les routes
-	r.Use(middlewares.SetUserToken())
+	r.Use(middlewares.SetUserAuthInfo())
 
 	// Routes pour les pages HTML
 	r.GET("/", func(c *gin.Context) {
@@ -61,7 +60,7 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 
 	r.GET("/threads", func(c *gin.Context) {
 		token, _ := c.Get("token")
-		_, isLoggedIn := c.Get("userID")
+		isLoggedIn, _ := c.Get("isLoggedIn")
 		var categories []models.Category
 		if err := database.DB.Find(&categories).Error; err != nil {
 			// En cas d'erreur, continuer avec une liste vide de catégories
@@ -174,11 +173,6 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 			"isLoggedIn": exists,
 			"userID":     userID,
 		})
-	})
-
-	r.GET("/logout", func(c *gin.Context) {
-		c.SetCookie("token", "", -1, "/", "", false, true)
-		c.Redirect(http.StatusFound, "/")
 	})
 
 	// API routes
@@ -458,6 +452,14 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	})
 
 	r.GET("/api/categories", controllers.GetCategories)
+
+	r.GET("/logout", func(c *gin.Context) {
+		// Supprimer le cookie JWT
+		c.SetCookie("token", "", -1, "/", "", false, true)
+
+		// Rediriger vers la page d'accueil
+		c.Redirect(http.StatusFound, "/")
+	})
 
 	return r
 }

@@ -21,24 +21,35 @@
                 </form>
             </div>
             <ul class="nav-links">
-                <li><a href="/">Accueil</a></li>
-                <li><a href="/threads" class="active">Sujets</a></li>
-                <li><a href="/login">Connexion</a></li>
-                <li><a href="/register" class="btn-primary">Inscription</a></li>
-                <li class="user-links hidden">
-                    <a href="/profile">Mon profil</a>
-                    <a href="#" id="logout-btn">Déconnexion</a>
-                </li>
-            </ul>
+    <li><a href="/">Accueil</a></li>
+    <li><a href="/threads">Sujets</a></li>
+    {{ if .isLoggedIn }}
+    <li class="user-links">
+        <a href="/profile">Mon profil</a>
+    </li>
+    <li class="user-links">
+        <a href="/logout" id="logout-link">Déconnexion</a>
+    </li>
+    {{ else }}
+    <li class="auth-links">
+        <a href="/login">Connexion</a>
+    </li>
+    <li class="auth-links">
+        <a href="/register" class="btn-primary">Inscription</a>
+    </li>
+    {{ end }}
+</ul>
         </nav>
     </header>
 
     <main>
         <div class="container">
-            <div class="threads-header">
-                <h1>Tous les sujets</h1>
-                <button class="btn-primary new-thread-btn hidden">Nouveau sujet</button>
-            </div>
+           <div class="threads-header">
+    <h1>Tous les sujets</h1>
+    {{ if .isLoggedIn }}
+    <button class="btn-primary new-thread-btn">Nouveau sujet</button>
+    {{ end }}
+</div>
 
             <div class="search-filter">
                 <input type="text" placeholder="Rechercher un sujet..." id="search-thread">
@@ -83,7 +94,11 @@
                         <label for="tags">Tags (séparés par des virgules)</label>
                         <input type="text" id="tags" name="tags">
                     </div>
+                    {{ if .isLoggedIn }}
                     <button type="submit" class="btn-primary">Créer</button>
+                    {{ else }}
+                    <p>Veuillez vous <a href="/login">connecter</a> pour créer un sujet.</p>
+                    {{ end }}
                 </form>
             </div>
         </div>
