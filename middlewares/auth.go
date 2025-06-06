@@ -96,50 +96,32 @@ func SetUserAuthInfo() gin.HandlerFunc {
 		// Définir isLoggedIn à false par défaut
 		c.Set("isLoggedIn", false)
 
-		// Chercher le token dans le header d'autorisation
-		tokenString := c.GetHeader("Authorization")
-		if tokenString != "" {
-			// Si le token est dans le header, enlever le préfixe "Bearer "
-			if len(tokenString) > 7 && strings.ToUpper(tokenString[0:7]) == "BEARER " {
-				tokenString = tokenString[7:]
-			}
-		} else {
-			// Si pas dans le header, chercher dans les cookies
-			var err error
-			tokenString, err = c.Cookie("token")
-			if err != nil {
-				// Pas de token, continuer sans authentification
-				c.Next()
-				return
-			}
-		}
+		// Vérifier si le token existe dans les cookies
+		tokenString, err := c.Cookie("token")
+		if err == nil && tokenString != "" {
+			// Valider le token
+			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return []byte(os.Getenv("JWT_SECRET")), nil
+			})
 
-		// Valider le token
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(os.Getenv("JWT_SECRET")), nil
-		})
+			if err == nil && token.Valid {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					// Définir les variables dans le contexte
+					userID := claims["sub"]
+					c.Set("userID", userID)
+					c.Set("token", tokenString)
+					c.Set("isLoggedIn", true)
 
-		if err != nil || !token.Valid {
-			// Token invalide, continuer sans authentification
-			c.Next()
-			return
-		}
-
-		// Token valide, extraire les claims
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			// Définir les variables dans le contexte
-			userID := claims["sub"]
-			c.Set("userID", userID)
-			c.Set("token", tokenString)
-			c.Set("isLoggedIn", true)
-
-			// Vérifier si l'utilisateur est admin (optionnel)
-			var user models.User
-			if err := DB.First(&user, userID).Error; err == nil && user.Role == "admin" {
-				c.Set("isAdmin", true)
+					// Récupérer les infos de l'utilisateur pour vérifier le rôle
+					var user models.User
+					if err := DB.First(&user, userID).Error; err == nil {
+						c.Set("userRole", user.Role)
+						c.Set("isAdmin", user.Role == "admin")
+					}
+				}
 			}
 		}
 

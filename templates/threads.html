@@ -20,7 +20,7 @@
                     <button type="submit"><i class="fa fa-search"></i></button>
                 </form>
             </div>
-            <ul class="nav-links">
+           <ul class="nav-links">
     <li><a href="/">Accueil</a></li>
     <li><a href="/threads">Sujets</a></li>
     {{ if .isLoggedIn }}
@@ -28,7 +28,7 @@
         <a href="/profile">Mon profil</a>
     </li>
     <li class="user-links">
-        <a href="/logout" id="logout-link">Déconnexion</a>
+        <a href="/logout">Déconnexion</a>
     </li>
     {{ else }}
     <li class="auth-links">

@@ -156,7 +156,7 @@ func Login(c *gin.Context) {
 	now := time.Now()
 	user.LastLogin = &now
 	DB.Save(&user)
-
+	c.SetCookie("token", tokenString, 3600*24, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
 		"user": gin.H{

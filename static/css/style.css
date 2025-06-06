@@ -358,6 +358,30 @@ nav {
   transform: scale(1.1);
 }
 
+.user-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.user-links a {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    color: var(--primary);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.user-links a:hover {
+    background-color: rgba(30, 61, 89, 0.1);
+}
+
+.auth-links {
+  display: flex;
+  gap: 1rem;
+  margin-left: auto;
+}
+
 /* Pagination */
 .pagination {
   display: flex;
