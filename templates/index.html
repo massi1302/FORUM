@@ -21,14 +21,19 @@
                 </form>
             </div>
             <ul class="nav-links">
-                <li><a href="/" class="active">Accueil</a></li>
+                <li><a href="/">Accueil</a></li>
                 <li><a href="/threads">Sujets</a></li>
-                <li><a href="/login">Connexion</a></li>
-                <li><a href="/register" class="btn-primary">Inscription</a></li>
-                <li class="user-links hidden">
+                {{ if .isLoggedIn }}
+                <li class="user-links">
                     <a href="/profile">Mon profil</a>
-                    <a href="#" id="logout-btn">Déconnexion</a>
+                    <a href="/logout">Déconnexion</a>
                 </li>
+                {{ else }}
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                {{ end }}
             </ul>
         </nav>
     </header>
