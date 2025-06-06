@@ -153,7 +153,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	user.LastLogin = time.Now()
+	now := time.Now()
+	user.LastLogin = &now
 	DB.Save(&user)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -417,8 +418,8 @@ func GetThread(c *gin.Context) {
 	sortBy := c.DefaultQuery("sort", "recent") // Par défaut, tri par date
 
 	// Charger le thread avec ses messages
-	if err := DB.Preload("User").First(&thread, threadID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Thread not found"})
+	if err := DB.Preload("User").Where("id = ? AND status != ?", threadID, "archived").First(&thread).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve thread"})
 		return
 	}
 
@@ -461,7 +462,16 @@ func GetThreads(c *gin.Context) {
 
 func CreateMessage(c *gin.Context) {
 	var message models.Message
+	var thread models.Thread
+	if err := DB.First(&thread, message.ThreadID).Error; err != nil {
+		// Gérer l'erreur
+		return
+	}
 
+	if thread.Status != "open" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Ce fil de discussion est fermé ou archivé"})
+		return
+	}
 	// Vérifier le type de contenu
 	contentType := c.GetHeader("Content-Type")
 	if contentType == "application/json" {
@@ -568,7 +578,20 @@ func DeleteMessage(c *gin.Context) {
 
 func VoteMessage(c *gin.Context) {
 	messageID := c.Param("id")
-	threadID := c.PostForm("ThreadID") // Pour rediriger vers la page du thread
+
+	// Récupérer d'abord le threadID associé au message
+	var message models.Message
+	if err := DB.First(&message, messageID).Error; err != nil {
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Message not found"})
+		} else {
+			c.Redirect(http.StatusFound, "/threads") // Rediriger vers la liste des threads en cas d'erreur
+		}
+		return
+	}
+
+	// Maintenant nous avons le threadID correct du message
+	threadID := strconv.Itoa(int(message.ThreadID))
 
 	var vote models.Vote
 	var existingVote models.Vote
@@ -588,7 +611,7 @@ func VoteMessage(c *gin.Context) {
 			if c.GetHeader("Accept") == "application/json" {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vote value"})
 			} else {
-				c.Redirect(http.StatusFound, "/thread/"+threadID)
+				c.Redirect(http.StatusFound, "/threads")
 			}
 			return
 		}
@@ -611,7 +634,7 @@ func VoteMessage(c *gin.Context) {
 		if c.GetHeader("Accept") == "application/json" {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
 		} else {
-			c.Redirect(http.StatusFound, "/thread/"+threadID)
+			c.Redirect(http.StatusFound, "/threads")
 		}
 		return
 	}
@@ -623,7 +646,7 @@ func VoteMessage(c *gin.Context) {
 		if c.GetHeader("Accept") == "application/json" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message ID"})
 		} else {
-			c.Redirect(http.StatusFound, "/thread/"+threadID)
+			c.Redirect(http.StatusFound, "/threads")
 		}
 		return
 	}
@@ -639,7 +662,7 @@ func VoteMessage(c *gin.Context) {
 				if c.GetHeader("Accept") == "application/json" {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not remove vote"})
 				} else {
-					c.Redirect(http.StatusFound, "/thread/"+threadID)
+					c.Redirect(http.StatusFound, "/threads")
 				}
 				return
 			}
@@ -647,6 +670,7 @@ func VoteMessage(c *gin.Context) {
 			if c.GetHeader("Accept") == "application/json" {
 				c.JSON(http.StatusOK, gin.H{"message": "Vote removed"})
 			} else {
+				// Utiliser la route correcte
 				c.Redirect(http.StatusFound, "/thread/"+threadID)
 			}
 			return
@@ -658,7 +682,7 @@ func VoteMessage(c *gin.Context) {
 			if c.GetHeader("Accept") == "application/json" {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update vote"})
 			} else {
-				c.Redirect(http.StatusFound, "/thread/"+threadID)
+				c.Redirect(http.StatusFound, "/threads")
 			}
 			return
 		}
@@ -666,6 +690,7 @@ func VoteMessage(c *gin.Context) {
 		if c.GetHeader("Accept") == "application/json" {
 			c.JSON(http.StatusOK, existingVote)
 		} else {
+			// Utiliser la route correcte
 			c.Redirect(http.StatusFound, "/thread/"+threadID)
 		}
 		return
@@ -676,7 +701,7 @@ func VoteMessage(c *gin.Context) {
 		if c.GetHeader("Accept") == "application/json" {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not vote on message"})
 		} else {
-			c.Redirect(http.StatusFound, "/thread/"+threadID)
+			c.Redirect(http.StatusFound, "/threads")
 		}
 		return
 	}
@@ -684,6 +709,7 @@ func VoteMessage(c *gin.Context) {
 	if c.GetHeader("Accept") == "application/json" {
 		c.JSON(http.StatusCreated, vote)
 	} else {
+		// Utiliser la route correcte
 		c.Redirect(http.StatusFound, "/thread/"+threadID)
 	}
 }
