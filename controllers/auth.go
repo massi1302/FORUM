@@ -168,13 +168,6 @@ func Login(c *gin.Context) {
 	})
 }
 
-// Fonction utilitaire pour générer un refresh token
-func generateRefreshToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return fmt.Sprintf("%x", b)
-}
-
 func GetAllUsers(c *gin.Context) {
 	var users []models.User
 	if err := DB.Find(&users).Error; err != nil {
