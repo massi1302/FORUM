@@ -70,42 +70,37 @@
         </div>
 
         <!-- Modal pour créer un nouveau sujet -->
-        <div class="modal" id="new-thread-modal">
-
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Créer un nouveau sujet</h2>
-
-                <form id="new-thread-form">
-                    <div class="form-group">
-                        <div class="form-group">
-                            <label for="category">Catégorie</label>
-                            <select id="category" name="CategoryID" class="form-control">
-                                <option value="0">Sélectionner une catégorie</option>
-                                {{ range .categories }}
-                                <option value="{{ .ID }}">{{ .Name }}</option>
-                                {{ end }}
-                            </select>
-                        </div>
-                        <label for="title">Titre</label>
-                        <input type="text" id="title" name="title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="content">Contenu</label>
-                        <textarea id="content" name="content" rows="6" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="tags">Tags (séparés par des virgules)</label>
-                        <input type="text" id="tags" name="tags">
-                    </div>
-                    {{ if .isLoggedIn }}
-                    <button type="submit" class="btn-primary">Créer</button>
-                    {{ else }}
-                    <p>Veuillez vous <a href="/login">connecter</a> pour créer un sujet.</p>
+<div id="new-thread-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Nouveau sujet</h2>
+        <!-- Changement de l'action et de la méthode -->
+        <form id="new-thread-form" action="/threads/create" method="POST">
+            <div class="form-group">
+                <label for="category">Catégorie</label>
+                <select id="category" name="category_id" required>
+                    <option value="">Sélectionner une catégorie</option>
+                    {{ range .categories }}
+                    <option value="{{ .ID }}">{{ .Name }}</option>
                     {{ end }}
-                </form>
+                </select>
             </div>
-        </div>
+            <div class="form-group">
+                <label for="title">Titre</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="content">Contenu</label>
+                <textarea id="content" name="content" rows="6" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="tags">Tags (séparés par des virgules)</label>
+                <input type="text" id="tags" name="tags">
+            </div>
+            <button type="submit" class="btn-primary">Créer</button>
+        </form>
+    </div>
+</div>
     </main>
 
     <footer>

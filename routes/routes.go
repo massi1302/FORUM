@@ -6,9 +6,12 @@ import (
 	"forum-educatif/database"
 	"forum-educatif/middlewares"
 	"forum-educatif/models"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -232,6 +235,8 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 			admin.PUT("/threads/:id/status", controllers.ChangeThreadStatus)
 		}
 	}
+
+	r.POST("/api/threads", controllers.CreateThread)
 
 	// Route pour le formulaire de message
 	r.POST("/form/message", func(c *gin.Context) {
@@ -467,5 +472,154 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 		c.Redirect(http.StatusFound, "/")
 	})
 
+	r.POST("/threads/create", func(c *gin.Context) {
+		// Vérifier si l'utilisateur est authentifié
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		// Récupérer les données du formulaire
+		title := c.PostForm("title")
+		content := c.PostForm("content")
+		categoryIDStr := c.PostForm("category_id")
+		tagsString := c.PostForm("tags")
+
+		// Valider les données
+		if title == "" || content == "" || categoryIDStr == "" {
+			c.HTML(http.StatusBadRequest, "threads.html", gin.H{
+				"title":      "Créer un sujet",
+				"error":      "Veuillez remplir tous les champs obligatoires",
+				"isLoggedIn": true,
+				"categories": GetCategories(), // Fonction pour récupérer les catégories
+				// Renvoyer les données pour pré-remplir le formulaire
+				"formData": gin.H{
+					"title":      title,
+					"content":    content,
+					"categoryID": categoryIDStr,
+					"tags":       tagsString,
+				},
+			})
+			return
+		}
+
+		// Convertir categoryID en uint
+		categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32)
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "threads.html", gin.H{
+				"title":      "Créer un sujet",
+				"error":      "Catégorie invalide",
+				"isLoggedIn": true,
+				"categories": GetCategories(),
+				"formData": gin.H{
+					"title":   title,
+					"content": content,
+					"tags":    tagsString,
+				},
+			})
+			return
+		}
+
+		// Créer un nouveau thread
+		thread := models.Thread{
+			Title:      title,
+			Content:    content,
+			CategoryID: uint(categoryID),
+			CreatedAt:  time.Now(),
+			Status:     "active",
+		}
+
+		// Convertir userID en uint
+		var threadUserID uint
+		switch v := userID.(type) {
+		case float64:
+			threadUserID = uint(v)
+		case uint:
+			threadUserID = v
+		case int:
+			threadUserID = uint(v)
+		default:
+			c.HTML(http.StatusInternalServerError, "threads.html", gin.H{
+				"title":      "Créer un sujet",
+				"error":      "Erreur avec l'ID utilisateur",
+				"isLoggedIn": true,
+				"categories": GetCategories(),
+				"formData": gin.H{
+					"title":      title,
+					"content":    content,
+					"categoryID": categoryIDStr,
+					"tags":       tagsString,
+				},
+			})
+			return
+		}
+		thread.UserID = threadUserID
+
+		// Sauvegarder le thread dans la base de données
+		if err := database.DB.Create(&thread).Error; err != nil {
+			c.HTML(http.StatusInternalServerError, "threads.html", gin.H{
+				"title":      "Créer un sujet",
+				"error":      "Erreur lors de la création du sujet: " + err.Error(),
+				"isLoggedIn": true,
+				"categories": GetCategories(),
+				"formData": gin.H{
+					"title":      title,
+					"content":    content,
+					"categoryID": categoryIDStr,
+					"tags":       tagsString,
+				},
+			})
+			return
+		}
+
+		// Traiter les tags si présents
+		if tagsString != "" {
+			tagNames := strings.Split(tagsString, ",")
+			var threadTags []models.Tag
+
+			for _, name := range tagNames {
+				name = strings.TrimSpace(name)
+				if name == "" {
+					continue
+				}
+
+				// Vérifier si le tag existe déjà
+				var tag models.Tag
+				result := database.DB.Where("name = ?", name).First(&tag)
+
+				if result.Error != nil {
+					// Créer un nouveau tag
+					tag = models.Tag{Name: name}
+					if err := database.DB.Create(&tag).Error; err != nil {
+						// Log l'erreur mais continuer
+						log.Printf("Erreur lors de la création du tag %s: %v", name, err)
+						continue
+					}
+				}
+
+				threadTags = append(threadTags, tag)
+			}
+
+			// Associer les tags au thread
+			if len(threadTags) > 0 {
+				if err := database.DB.Model(&thread).Association("Tags").Append(threadTags); err != nil {
+					// Log l'erreur mais continuer
+					log.Printf("Erreur lors de l'association des tags: %v", err)
+				}
+			}
+		}
+
+		// Rediriger vers le nouveau thread
+		c.Redirect(http.StatusFound, fmt.Sprintf("/thread/%d", thread.ID))
+	})
+
 	return r
+}
+
+// Fonction helper pour récupérer les catégories
+func GetCategories() []models.Category {
+	var categories []models.Category
+	database.DB.Find(&categories)
+	return categories
 }

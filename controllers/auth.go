@@ -245,152 +245,109 @@ func UpdateThread(c *gin.Context) {
 }
 
 func CreateThread(c *gin.Context) {
-	// Structure pour la désérialisation des données reçues
-	var threadRequest struct {
-		Title      string   `json:"Title"`
-		Content    string   `json:"Content"`
-		Tags       []string `json:"Tags"`
-		CategoryID uint     `json:"CategoryID"`
-	}
-
-	if err := c.ShouldBindJSON(&threadRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
+	// Vérifier si l'utilisateur est authentifié
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		} else {
+			c.Redirect(http.StatusFound, "/login")
+		}
 		return
 	}
 
-	// Débogage : afficher le type et la valeur de userID
-	fmt.Printf("Type de userID: %T, Valeur: %v\n", userID, userID)
+	var thread models.Thread
 
-	// Conversion correcte de float64 à uint
-	floatID, ok := userID.(float64)
-	if !ok {
-		// Essayer de convertir à partir d'autres types possibles
-		switch v := userID.(type) {
-		case float64:
-			floatID = v
-		case int:
-			floatID = float64(v)
-		case int64:
-			floatID = float64(v)
-		case uint:
-			floatID = float64(v)
-		case uint64:
-			floatID = float64(v)
-		case string:
-			var err error
-			floatID, err = strconv.ParseFloat(v, 64)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-				return
+	// Déterminer si la requête est JSON ou formulaire
+	contentType := c.GetHeader("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		// Traiter une requête JSON
+		if err := c.ShouldBindJSON(&thread); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		// Traiter un formulaire
+		thread.Title = c.PostForm("Title")
+		thread.Content = c.PostForm("Content")
+		categoryID, err := strconv.Atoi(c.PostForm("CategoryID"))
+		if err != nil {
+			if c.GetHeader("Accept") == "application/json" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+			} else {
+				c.HTML(http.StatusBadRequest, "threads.html", gin.H{
+					"error":      "Catégorie invalide",
+					"isLoggedIn": true,
+				})
 			}
-		default:
+			return
+		}
+		thread.CategoryID = uint(categoryID)
+
+		// Traiter les tags
+		tagString := c.PostForm("Tags")
+		if tagString != "" {
+			tagNames := strings.Split(tagString, ",")
+			for _, name := range tagNames {
+				name = strings.TrimSpace(name)
+				if name != "" {
+					// Rechercher si le tag existe déjà
+					var tag models.Tag
+					result := DB.Where("name = ?", name).First(&tag)
+					if result.Error != nil {
+						// Créer un nouveau tag
+						tag = models.Tag{Name: name}
+						DB.Create(&tag)
+					}
+					thread.Tags = append(thread.Tags, tag)
+				}
+			}
+		}
+	}
+
+	// Définir l'utilisateur qui crée le thread
+	userIDFloat, ok := userID.(float64)
+	if !ok {
+		userIDUint, ok := userID.(uint)
+		if !ok {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
 			return
 		}
-	}
-
-	var user models.User
-	if err := DB.First(&user, uint(floatID)).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Referenced user does not exist"})
-		return
-	}
-
-	// Création du thread
-	thread := models.Thread{
-		Title:     threadRequest.Title,
-		Content:   threadRequest.Content,
-		UserID:    user.ID,
-		AuthorID:  user.ID,
-		Status:    "open",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	// Ajout de la catégorie si spécifiée
-	if threadRequest.CategoryID == 0 {
-		// Récupérer la première catégorie (Général)
-		var defaultCategory models.Category
-		if err := DB.First(&defaultCategory).Error; err != nil {
-			// Si aucune catégorie n'existe, en créer une
-			defaultCategory = models.Category{
-				Name:        "Général",
-				Description: "Discussions générales",
-				CreatedAt:   time.Now(),
-			}
-			if err := DB.Create(&defaultCategory).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create default category"})
-				return
-			}
-		}
-		thread.CategoryID = defaultCategory.ID
+		thread.UserID = userIDUint
 	} else {
-		// Vérifier si la catégorie spécifiée existe
-		var category models.Category
-		if err := DB.First(&category, threadRequest.CategoryID).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Specified category does not exist"})
-			return
-		}
-		thread.CategoryID = threadRequest.CategoryID
+		thread.UserID = uint(userIDFloat)
 	}
 
-	// Traitement des tags
-	var tags []models.Tag
-	for _, tagName := range threadRequest.Tags {
-		if tagName == "" {
-			continue // Ignorer les tags vides
+	thread.CreatedAt = time.Now()
+	thread.Status = "active"
+
+	// Créer le thread dans la base de données
+	if err := DB.Create(&thread).Error; err != nil {
+		if c.GetHeader("Accept") == "application/json" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create thread"})
+		} else {
+			c.HTML(http.StatusInternalServerError, "threads.html", gin.H{
+				"error":      "Erreur lors de la création du sujet",
+				"isLoggedIn": true,
+			})
 		}
-
-		// Rechercher si le tag existe déjà
-		var tag models.Tag
-		result := DB.Where("name = ?", tagName).First(&tag)
-
-		if result.Error != nil {
-			// Si le tag n'existe pas, on le crée
-			tag = models.Tag{
-				Name:      tagName,
-				CreatedAt: time.Now(),
-			}
-			if err := DB.Create(&tag).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create tag"})
-				return
-			}
-		}
-
-		tags = append(tags, tag)
-	}
-
-	// Transaction pour s'assurer que tout est enregistré correctement
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		// Créer le thread
-		if err := tx.Create(&thread).Error; err != nil {
-			return err
-		}
-
-		// Associer les tags au thread
-		if len(tags) > 0 {
-			if err := tx.Model(&thread).Association("Tags").Append(tags); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create thread: " + err.Error()})
 		return
 	}
 
-	// Charger les tags pour la réponse
-	DB.Model(&thread).Association("Tags").Find(&thread.Tags)
+	// Associer les tags au thread
+	if len(thread.Tags) > 0 {
+		if err := DB.Model(&thread).Association("Tags").Replace(thread.Tags); err != nil {
+			// Juste logger l'erreur mais continuer
+			log.Printf("Error associating tags: %v", err)
+		}
+	}
 
-	c.JSON(http.StatusCreated, thread)
+	// Répondre en fonction du type de demande
+	if c.GetHeader("Accept") == "application/json" {
+		c.JSON(http.StatusCreated, thread)
+	} else {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/thread/%d", thread.ID))
+	}
 }
 
 func GetCategories(c *gin.Context) {
