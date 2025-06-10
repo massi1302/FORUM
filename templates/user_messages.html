@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/header.css">
+    <link rel="stylesheet" href="/static/css/footer.css">
+</head>
+
+<body>
+       <header>
+        <nav>
+            <div class="logo">
+                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo"></a>
+            </div>
+            <div class="search-container">
+                <form action="/search" method="get">
+                    <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}">
+                    <button type="submit"><i class="fa fa-search"></i></button>
+                </form>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/threads">Sujets</a></li>
+                {{ if .isLoggedIn }}
+                <li class="user-links">
+                    <div class="menu-container">
+                        <img class="accountIcon" src="/static/assets/accountIcon.png" alt="Compte" tabindex="0" />
+                        <div class="dropdown">
+                            <a href="/profile">Mon profil</a>
+                            <a href="/logout">Déconnexion</a>
+                        </div>
+                    </div>
+                </li>
+                {{ else }}
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                {{ end }}
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            <h1>Messages de {{ .user.Username }}</h1>
+            
+            {{ if eq (len .messages) 0 }}
+            <p>Cet utilisateur n'a pas encore posté de messages.</p>
+            {{ else }}
+                {{ range .messages }}
+                <div class="message-card">
+                    <div class="message-header">
+                        <span class="message-author">{{ .User.Username }}</span>
+                        <span class="message-date">{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                    </div>
+                    <div class="message-thread">
+                        Dans <a href="/thread/{{ .ThreadID }}">{{ .Thread.Title }}</a>
+                    </div>
+                    <div class="message-content">
+                        <p>{{ .Content }}</p>
+                    </div>
+                </div>
+                {{ end }}
+                
+                <!-- Pagination -->
+                {{ if gt .totalPages 1 }}
+                <div class="pagination">
+                    {{ if gt .page 1 }}
+                    <a href="/messages?user={{ .user.ID }}&page={{ sub .page 1 }}">&laquo; Précédent</a>
+                    {{ end }}
+                    
+                    {{ range $i := seq 1 .totalPages }}
+                    <a href="/messages?user={{ $.user.ID }}&page={{ $i }}" class="{{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
+                    {{ end }}
+                    
+                    {{ if lt .page .totalPages }}
+                    <a href="/messages?user={{ .user.ID }}&page={{ add .page 1 }}">Suivant &raquo;</a>
+                    {{ end }}
+                </div>
+                {{ end }}
+            {{ end }}
+        </div>
+    </main>
+
+    <footer>
+        <!-- Même footer que dans profile.html -->
+    </footer>
+</body>
+
+</html>

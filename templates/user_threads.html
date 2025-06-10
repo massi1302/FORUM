@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/header.css">
+    <link rel="stylesheet" href="/static/css/footer.css">
+</head>
+
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo"></a>
+            </div>
+            <div class="search-container">
+                <form action="/search" method="get">
+                    <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}">
+                    <button type="submit"><i class="fa fa-search"></i></button>
+                </form>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/threads">Sujets</a></li>
+                {{ if .isLoggedIn }}
+                <li class="user-links">
+                    <div class="menu-container">
+                        <img class="accountIcon" src="/static/assets/accountIcon.png" alt="Compte" tabindex="0" />
+                        <div class="dropdown">
+                            <a href="/profile">Mon profil</a>
+                            <a href="/logout">Déconnexion</a>
+                        </div>
+                    </div>
+                </li>
+                {{ else }}
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                {{ end }}
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            <h1>Sujets de {{ .user.Username }}</h1>
+            
+            {{ if eq (len .threads) 0 }}
+            <p>Cet utilisateur n'a pas encore créé de sujets.</p>
+            {{ else }}
+                {{ range .threads }}
+                <div class="thread-card">
+                    <h2><a href="/thread/{{ .ID }}">{{ .Title }}</a></h2>
+                    <div class="thread-meta">
+                        <span>Par {{ .User.Username }}</span>
+                        <span>Dans <a href="/category/{{ .CategoryID }}">{{ .Category.Name }}</a></span>
+                        <span>{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                    </div>
+                    <p>{{ if gt (len .Content) 300 }}{{ slice .Content 0 300 }}...{{ else }}{{ .Content }}{{ end }}</p>
+                </div>
+                {{ end }}
+                
+                <!-- Pagination -->
+                {{ if gt .totalPages 1 }}
+                <div class="pagination">
+                    {{ if gt .page 1 }}
+                    <a href="/threads?user={{ .user.ID }}&page={{ sub .page 1 }}">&laquo; Précédent</a>
+                    {{ end }}
+                    
+                    {{ range $i := seq 1 .totalPages }}
+                    <a href="/threads?user={{ $.user.ID }}&page={{ $i }}" class="{{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
+                    {{ end }}
+                    
+                    {{ if lt .page .totalPages }}
+                    <a href="/threads?user={{ .user.ID }}&page={{ add .page 1 }}">Suivant &raquo;</a>
+                    {{ end }}
+                </div>
+                {{ end }}
+            {{ end }}
+        </div>
+    </main>
+
+      <footer>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4>Forum Éducatif</h4>
+                <p>Un espace d'échange et d'apprentissage pour tous les passionnés de savoir.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <ul class="footer-contact">
+                    <li>Email : <a href="mailto:contact@forum-educatif.fr">contact@forum-educatif.fr</a></li>
+                    <li>Adresse : 123 Rue de l'Éducation, Paris</li>
+                </ul>
+                <div class="footer-social">
+                    <a href="#" title="Twitter"><i class="fa fa-twitter"></i></a>
+                    <a href="#" title="Facebook"><i class="fa fa-facebook"></i></a>
+                    <a href="#" title="Instagram"><i class="fa fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Forum Éducatif. Tous droits réservés.
+        </div>
+    </footer>
+</body>
+
+</html>
