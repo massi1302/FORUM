@@ -9,11 +9,13 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func SetupRoutes(r *gin.Engine) *gin.Engine {
@@ -67,22 +69,92 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	})
 
 	r.GET("/threads", func(c *gin.Context) {
-		token, _ := c.Get("token")
-		isLoggedIn, _ := c.Get("isLoggedIn")
-		var categories []models.Category
-		if err := database.DB.Find(&categories).Error; err != nil {
-			// En cas d'erreur, continuer avec une liste vide de catégories
-			categories = []models.Category{}
+		// Récupérer les informations d'authentification
+		isLoggedIn, exists := c.Get("isLoggedIn")
+		if !exists {
+			isLoggedIn = false
 		}
 
+		// Récupérer les paramètres de requête
+		userIDStr := c.Query("user")
+		categoryIDStr := c.Query("category")
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+
+		// Log pour débogage
+		fmt.Printf("Requête de threads - User: %s, Category: %s, Page: %d, Size: %d\n",
+			userIDStr, categoryIDStr, page, pageSize)
+
+		// Si on veut les threads d'un utilisateur spécifique
+		if userIDStr != "" {
+			// Traitement des threads d'un utilisateur spécifique
+			// ...
+			return
+		}
+
+		// Requête de base pour tous les threads
+		db := database.DB.Model(&models.Thread{})
+
+		// Filtrer par catégorie si spécifiée
+		if categoryIDStr != "" {
+			db = db.Where("category_id = ?", categoryIDStr)
+		}
+
+		// Compter le nombre total de threads
+		var total int64
+		if err := db.Count(&total).Error; err != nil {
+			fmt.Printf("Erreur lors du comptage des threads: %v\n", err)
+			total = 0
+		}
+
+		fmt.Printf("Nombre total de threads: %d\n", total)
+
+		// Calculer le nombre total de pages
+		totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+		if page < 1 {
+			page = 1
+		}
+		if page > totalPages && totalPages > 0 {
+			page = totalPages
+		}
+
+		// Offset pour la pagination
+		offset := (page - 1) * pageSize
+
+		// Récupérer les threads avec pagination
+		var threads []models.Thread
+		result := db.Order("created_at DESC").
+			Preload("User").
+			Preload("Category").
+			Limit(pageSize).
+			Offset(offset).
+			Find(&threads)
+
+		if result.Error != nil {
+			fmt.Printf("Erreur lors de la récupération des threads: %v\n", result.Error)
+		}
+
+		fmt.Printf("Nombre de threads récupérés: %d\n", len(threads))
+
+		// Récupérer toutes les catégories pour le filtre
+		var categories []models.Category
+		if err := database.DB.Find(&categories).Error; err != nil {
+			fmt.Printf("Erreur lors de la récupération des catégories: %v\n", err)
+		}
+
+		// Afficher la page threads.html
 		c.HTML(http.StatusOK, "threads.html", gin.H{
 			"title":      "Tous les sujets",
-			"token":      token,
-			"isLoggedIn": isLoggedIn,
+			"threads":    threads,
 			"categories": categories,
+			"categoryID": categoryIDStr,
+			"isLoggedIn": isLoggedIn,
+			"page":       page,
+			"pageSize":   pageSize,
+			"totalPages": totalPages,
+			"total":      total,
 		})
 	})
-
 	r.GET("/thread/:id", func(c *gin.Context) {
 		id := c.Param("id")
 		sortBy := c.DefaultQuery("sort", "recent") // Par défaut, tri par date
@@ -171,16 +243,211 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 			"isAdmin":    isAdmin,
 		})
 	})
+	// Route pour afficher les détails du profil
 	r.GET("/profile", func(c *gin.Context) {
-		token, _ := c.Get("token")
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if !isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
 		userID, exists := c.Get("userID")
+		if !exists {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		// Convertir userID en uint selon son type
+		var userIDUint uint
+		switch v := userID.(type) {
+		case float64:
+			userIDUint = uint(v)
+		case uint:
+			userIDUint = v
+		case int:
+			userIDUint = uint(v)
+		default:
+			fmt.Printf("Type d'ID utilisateur non géré: %T\n", userID)
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":      "Erreur",
+				"message":    "Type d'ID utilisateur invalide",
+				"isLoggedIn": true,
+			})
+			return
+		}
+
+		// Log pour débogage
+		fmt.Printf("Recherche de l'utilisateur avec ID: %d\n", userIDUint)
+
+		// Récupérer les données de l'utilisateur
+		var user models.User
+		if err := database.DB.First(&user, userIDUint).Error; err != nil {
+			fmt.Printf("Erreur lors de la recherche de l'utilisateur: %v\n", err)
+
+			// Créer un utilisateur test en mode développement
+			if os.Getenv("APP_ENV") == "development" || os.Getenv("APP_ENV") == "" {
+				fmt.Println("Création d'un utilisateur test...")
+				user = models.User{
+					ID:        userIDUint,
+					Username:  "User" + strconv.Itoa(int(userIDUint)),
+					Email:     "user" + strconv.Itoa(int(userIDUint)) + "@example.com",
+					Role:      "user",
+					CreatedAt: time.Now(),
+				}
+
+				// Hasher un mot de passe par défaut
+				hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+				user.Password = string(hashedPassword)
+
+				if err := database.DB.Create(&user).Error; err != nil {
+					fmt.Printf("Erreur lors de la création de l'utilisateur test: %v\n", err)
+					c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+						"title":      "Erreur",
+						"message":    "Impossible de créer l'utilisateur",
+						"isLoggedIn": true,
+					})
+					return
+				}
+				fmt.Printf("Utilisateur test créé avec ID: %d\n", user.ID)
+			} else {
+				c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+					"title":      "Erreur",
+					"message":    "Utilisateur non trouvé",
+					"isLoggedIn": true,
+				})
+				return
+			}
+		}
+
+		// Compter les sujets de l'utilisateur
+		var threadCount int64
+		database.DB.Model(&models.Thread{}).Where("user_id = ?", userIDUint).Count(&threadCount)
+
+		// Compter les messages de l'utilisateur
+		var messageCount int64
+		database.DB.Model(&models.Message{}).Where("user_id = ?", userIDUint).Count(&messageCount)
+
+		// Récupérer les sujets de l'utilisateur
+		var threads []models.Thread
+		if err := database.DB.Where("user_id = ?", userIDUint).
+			Order("created_at DESC").
+			Limit(5).
+			Find(&threads).Error; err != nil {
+			fmt.Printf("Erreur lors de la récupération des threads: %v\n", err)
+		}
+
+		// Récupérer les messages de l'utilisateur
+		var messages []models.Message
+		if err := database.DB.Where("user_id = ?", userIDUint).
+			Order("created_at DESC").
+			Limit(5).
+			Preload("Thread").
+			Find(&messages).Error; err != nil {
+			fmt.Printf("Erreur lors de la récupération des messages: %v\n", err)
+		}
+
+		// Détecter l'onglet actif
+		activeTab := c.DefaultQuery("tab", "threads")
+
+		// Détecter si une mise à jour a réussi
+		success := c.Query("success") == "true"
+
+		// Détecter les erreurs
+		errorParam := c.Query("error")
 
 		c.HTML(http.StatusOK, "profile.html", gin.H{
-			"title":      "Mon profil",
-			"token":      token,
-			"isLoggedIn": exists,
-			"userID":     userID,
+			"title":        "Mon profil",
+			"isLoggedIn":   true,
+			"user":         user,
+			"threadCount":  threadCount,
+			"messageCount": messageCount,
+			"threads":      threads,
+			"messages":     messages,
+			"activeTab":    activeTab,
+			"success":      success,
+			"error":        errorParam,
 		})
+	})
+
+	// Route pour modifier le profil
+	r.POST("/profile/update", func(c *gin.Context) {
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if !isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		// Convertir userID en uint
+		var userIDUint uint
+		switch v := userID.(type) {
+		case float64:
+			userIDUint = uint(v)
+		case uint:
+			userIDUint = v
+		case int:
+			userIDUint = uint(v)
+		default:
+			c.Redirect(http.StatusFound, "/profile?error=userid&tab=settings")
+			return
+		}
+
+		// Récupérer l'utilisateur actuel
+		var user models.User
+		if err := database.DB.First(&user, userIDUint).Error; err != nil {
+			c.Redirect(http.StatusFound, "/profile?error=notfound&tab=settings")
+			return
+		}
+
+		// Récupérer les données du formulaire
+		username := c.PostForm("username")
+		email := c.PostForm("email")
+		bio := c.PostForm("bio")
+		currentPassword := c.PostForm("current_password")
+		newPassword := c.PostForm("new_password")
+
+		// Vérifier si le nom d'utilisateur ou l'email sont vides
+		if username == "" || email == "" {
+			c.Redirect(http.StatusFound, "/profile?error=empty&tab=settings")
+			return
+		}
+
+		// Vérifier si l'utilisateur veut changer son mot de passe
+		if newPassword != "" && currentPassword != "" {
+			// Vérifier si le mot de passe actuel est correct
+			if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
+				c.Redirect(http.StatusFound, "/profile?error=password&tab=settings")
+				return
+			}
+
+			// Hasher le nouveau mot de passe
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+			if err != nil {
+				c.Redirect(http.StatusFound, "/profile?error=hash&tab=settings")
+				return
+			}
+
+			user.Password = string(hashedPassword)
+		}
+
+		// Mettre à jour les champs
+		user.Username = username
+		user.Email = email
+		user.Bio = bio
+
+		// Sauvegarder les modifications
+		if err := database.DB.Save(&user).Error; err != nil {
+			c.Redirect(http.StatusFound, "/profile?error=save&tab=settings")
+			return
+		}
+
+		// Rediriger vers le profil avec un message de succès
+		c.Redirect(http.StatusFound, "/profile?success=true&tab=settings")
 	})
 
 	// API routes

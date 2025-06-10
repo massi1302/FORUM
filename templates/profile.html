@@ -15,7 +15,7 @@
     <header>
         <nav>
             <div class="logo">
-                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo" /></a>
+                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo"></a>
             </div>
             <div class="search-container">
                 <form action="/search" method="get">
@@ -48,19 +48,19 @@
     <main>
         <div class="container">
             <div class="profile-header">
-                <img src="/static/img/default.png" alt="Avatar" class="profile-avatar" id="user-avatar">
+                <img src="/static/assets/accountIcon.png" alt="Avatar" class="profile-avatar">
                 <div class="profile-info">
-                    <h2 id="username">A FAIRE</h2>
-                    <p id="user-email">A FAIRE</p>
-                    <p id="user-bio">A FAIRE</p>
+                    <h2>{{ .user.Username }}</h2>
+                    <p>{{ .user.Email }}</p>
+                    <p>{{ if .user.Bio }}{{ .user.Bio }}{{ else }}Aucune biographie{{ end }}</p>
 
                     <div class="profile-stats">
                         <div class="stat-item">
-                            <div class="stat-value" id="thread-count">0</div>
+                            <div class="stat-value">{{ .threadCount }}</div>
                             <div class="stat-label">Sujets</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value" id="message-count">0</div>
+                            <div class="stat-value">{{ .messageCount }}</div>
                             <div class="stat-label">Messages</div>
                         </div>
                     </div>
@@ -69,55 +69,97 @@
 
             <div class="profile-content">
                 <div class="tabs">
-                    <div class="tab active" data-tab="threads">Mes sujets</div>
-                    <div class="tab" data-tab="messages">Mes messages</div>
-                    <div class="tab" data-tab="settings">Paramètres</div>
+                    <a href="/profile?tab=threads" class="tab {{ if eq .activeTab "threads" }}active{{ end }}">Mes sujets</a>
+                    <a href="/profile?tab=messages" class="tab {{ if eq .activeTab "messages" }}active{{ end }}">Mes messages</a>
+                    <a href="/profile?tab=settings" class="tab {{ if eq .activeTab "settings" }}active{{ end }}">Paramètres</a>
                 </div>
 
-                <div class="tab-content active" id="threads-tab">
-                    <div id="user-threads">
-                        <!-- Les threads de l'utilisateur seront chargés dynamiquement -->
-                        <div class="loading">Chargement des sujets...</div>
+                <div class="tab-content {{ if eq .activeTab "threads" }}active{{ end }}" id="threads-tab">
+                    {{ if eq (len .threads) 0 }}
+                        <p>Vous n'avez pas encore créé de sujets.</p>
+                    {{ else }}
+                        {{ range .threads }}
+                        <div class="thread-item">
+                            <h3><a href="/thread/{{ .ID }}">{{ .Title }}</a></h3>
+                            <div class="thread-date">{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</div>
+                            <p>{{ if gt (len .Content) 200 }}{{ slice .Content 0 200 }}...{{ else }}{{ .Content }}{{ end }}</p>
+                        </div>
+                        {{ end }}
+                        {{ if gt .threadCount 5 }}
+                        <a href="/threads?user={{ .user.ID }}" class="see-more">Voir tous mes sujets</a>
+                        {{ end }}
+                    {{ end }}
+                </div>
+
+                <div class="tab-content {{ if eq .activeTab "messages" }}active{{ end }}" id="messages-tab">
+                    {{ if eq (len .messages) 0 }}
+                        <p>Vous n'avez pas encore posté de messages.</p>
+                    {{ else }}
+                        {{ range .messages }}
+                        <div class="message-item">
+                            <h3>Réponse dans <a href="/thread/{{ .ThreadID }}">{{ .Thread.Title }}</a></h3>
+                            <div class="message-date">{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</div>
+                            <p>{{ if gt (len .Content) 200 }}{{ slice .Content 0 200 }}...{{ else }}{{ .Content }}{{ end }}</p>
+                        </div>
+                        {{ end }}
+                        {{ if gt .messageCount 5 }}
+                        <a href="/messages?user={{ .user.ID }}" class="see-more">Voir tous mes messages</a>
+                        {{ end }}
+                    {{ end }}
+                </div>
+
+                <div class="tab-content {{ if eq .activeTab "settings" }}active{{ end }}" id="settings-tab">
+                    {{ if .success }}
+                    <div class="settings-success">
+                        Vos informations ont été mises à jour avec succès.
                     </div>
-                </div>
+                    {{ end }}
 
-                <div class="tab-content" id="messages-tab">
-                    <div id="user-messages">
-                        <!-- Les messages de l'utilisateur seront chargés dynamiquement -->
-                        <div class="loading">Chargement des messages...</div>
+                    {{ if .error }}
+                    <div class="settings-error">
+                        {{ if eq .error "empty" }}
+                        Veuillez remplir tous les champs obligatoires.
+                        {{ else if eq .error "password" }}
+                        Le mot de passe actuel est incorrect.
+                        {{ else if eq .error "hash" }}
+                        Erreur lors du hachage du mot de passe.
+                        {{ else if eq .error "save" }}
+                        Erreur lors de la sauvegarde des informations.
+                        {{ else if eq .error "userid" }}
+                        Erreur avec l'ID utilisateur.
+                        {{ else if eq .error "notfound" }}
+                        Utilisateur non trouvé.
+                        {{ else }}
+                        Une erreur est survenue. Veuillez réessayer.
+                        {{ end }}
                     </div>
-                </div>
+                    {{ end }}
 
-                <div class="tab-content" id="settings-tab">
                     <div class="form-container">
                         <h3>Modifier le profil</h3>
-                        <form id="profile-form">
+                        <form action="/profile/update" method="POST">
                             <div class="form-group">
-                                <label for="edit-username">Nom d'utilisateur</label>
-                                <input type="text" id="edit-username" name="username">
+                                <label for="username">Nom d'utilisateur</label>
+                                <input type="text" id="username" name="username" value="{{ .user.Username }}" required>
                             </div>
                             <div class="form-group">
-                                <label for="edit-email">Email</label>
-                                <input type="email" id="edit-email" name="email">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" value="{{ .user.Email }}" required>
                             </div>
                             <div class="form-group">
-                                <label for="edit-bio">Bio</label>
-                                <textarea id="edit-bio" name="bio" rows="4"></textarea>
+                                <label for="bio">Bio</label>
+                                <textarea id="bio" name="bio" rows="4">{{ .user.Bio }}</textarea>
                             </div>
-                            <div class="form-group">
-                                <label for="edit-avatar">Avatar (URL)</label>
-                                <input type="text" id="edit-avatar" name="avatar">
-                            </div>
+                            <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--border);">
+                            <h3>Changer le mot de passe</h3>
                             <div class="form-group">
                                 <label for="current-password">Mot de passe actuel</label>
                                 <input type="password" id="current-password" name="current_password">
                             </div>
                             <div class="form-group">
-                                <label for="new-password">Nouveau mot de passe (laisser vide pour ne pas
-                                    changer)</label>
+                                <label for="new-password">Nouveau mot de passe (laisser vide pour ne pas changer)</label>
                                 <input type="password" id="new-password" name="new_password">
                             </div>
-                            <div class="error-message" id="settings-error"></div>
                             <button type="submit" class="btn-primary">Enregistrer</button>
                         </form>
                     </div>
@@ -125,6 +167,8 @@
             </div>
         </div>
     </main>
+
+
 
     <footer>
         <div class="footer-container">

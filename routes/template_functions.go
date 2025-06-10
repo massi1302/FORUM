@@ -24,4 +24,11 @@ var TemplateFuncs = template.FuncMap{
 	"eq": func(a, b interface{}) bool {
 		return a == b
 	},
+	"seq": func(start, end int) []int {
+		var result []int
+		for i := start; i <= end; i++ {
+			result = append(result, i)
+		}
+		return result
+	},
 }
