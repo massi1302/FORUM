@@ -10,20 +10,18 @@ type Tag struct {
 }
 
 type Thread struct {
-	ID         uint `gorm:"primaryKey;type:int unsigned"`
-	Title      string
-	Content    string
-	Status     string `gorm:"default:open"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	UserID     uint      `gorm:"type:int unsigned"`
-	User       User      `gorm:"foreignKey:UserID"`
-	Messages   []Message `gorm:"foreignKey:ThreadID"`
-	CategoryID uint      `gorm:"type:int unsigned"`
-	Category   Category  `gorm:"foreignKey:CategoryID"`
-	Tags       []Tag     `gorm:"many2many:thread_tags;"`
-	AuthorID   uint      `gorm:"column:author_id"`
-	Author     User      `gorm:"foreignKey:AuthorID"`
+	ID         uint      `gorm:"primaryKey" json:"ID"`
+	Title      string    `gorm:"not null" json:"Title"`
+	Content    string    `gorm:"not null" json:"Content"`
+	UserID     uint      `gorm:"not null" json:"UserID"`
+	User       User      `gorm:"foreignKey:UserID" json:"User"`
+	CategoryID uint      `gorm:"not null" json:"CategoryID"`
+	Category   Category  `gorm:"foreignKey:CategoryID" json:"Category"`
+	Status     string    `gorm:"default:active" json:"Status"`
+	CreatedAt  time.Time `json:"CreatedAt"`
+	UpdatedAt  time.Time `json:"UpdatedAt"`
+	Tags       []Tag     `gorm:"many2many:thread_tags;" json:"Tags"`
+	Messages   []Message `gorm:"foreignKey:ThreadID" json:"Messages"`
 }
 
 type Category struct {
