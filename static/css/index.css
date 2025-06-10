@@ -4,6 +4,7 @@ body {
     margin: 0;
     padding: 0;
     width: 100%;
+    font-family: "Segoe UI", sans-serif;
     box-sizing: border-box;
 }
 
@@ -49,7 +50,6 @@ main {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 2rem;
     padding: 0;
-    /* Remove horizontal padding */
     max-width: 100%;
     box-sizing: border-box;
 }
@@ -57,6 +57,7 @@ main {
 .feature-card {
     background: white;
     padding: 2rem;
+    margin: 50px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     text-align: center;
