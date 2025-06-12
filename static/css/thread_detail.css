@@ -16,11 +16,15 @@ main {
 
 .container {
     max-width: 900px;
+    width: 100%;
     margin: 2rem auto;
     background: #fff;
     border-radius: 16px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
     padding: 2.5rem 2rem;
+    overflow: hidden;
+    /* Prevents content from overflowing */
+    box-sizing: border-box;
 }
 
 .thread-detail {
@@ -78,6 +82,11 @@ main {
     font-size: 1.1rem;
     color: #222;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: visible;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .messages-container {
@@ -120,6 +129,9 @@ main {
     padding: 1.5rem 1.2rem;
     margin-bottom: 1.5rem;
     border: 1px solid #e9ecef;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .message-header {
@@ -141,9 +153,19 @@ main {
 }
 
 .message-content {
+    width: 100%;
+    height: auto;
+    /* Height adapts to content */
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: visible;
+    padding: 0;
     margin-bottom: 1rem;
     color: #222;
     font-size: 1.05rem;
+    background: none;
+    border: none;
+    box-shadow: none;
 }
 
 .vote-buttons {

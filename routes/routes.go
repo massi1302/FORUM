@@ -582,7 +582,7 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 		{
 			auth.POST("/register", controllers.Register)
 			auth.POST("/login", controllers.Login)
-			//			auth.POST("/logout", controllers.Logout)
+			//          auth.POST("/logout", controllers.Logout)
 		}
 
 		// Thread routes

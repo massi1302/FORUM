@@ -168,6 +168,19 @@ main {
     background-color: #e6a355;
 }
 
+.thread-excerpt {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 7.5em;
+    line-height: 1.5em;
+    color: #222;
+    margin-bottom: 1rem;
+}
+
 @media (max-width: 900px) {
     .container {
         padding: 1.5rem 0.5rem;
