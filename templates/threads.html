@@ -1,28 +1,34 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .title }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/header.css">
     <link rel="stylesheet" href="/static/css/footer.css">
     <link rel="stylesheet" href="/static/css/threads.css">
 </head>
+
 <body>
     <header>
         <nav>
             <div class="logo">
-                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo"></a>
+                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo" /></a>
             </div>
+
             <div class="search-container">
                 <form action="/search" method="get">
-                    <input type="text" name="q" placeholder="Rechercher un sujet...">
-                    <button type="submit"><i class="fa fa-search"></i></button>
+                    <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}" />
+                    <button type="submit" class="search-btn">
+                        <img src="/static/assets/searchIcon.png" alt="Rechercher" class="search-icon" />
+                    </button>
                 </form>
             </div>
+
             <ul class="nav-links">
                 <li><a href="/threads">Sujets</a></li>
+
                 {{ if .isLoggedIn }}
                 <li class="user-links">
                     <div class="menu-container">
@@ -42,11 +48,10 @@
             </ul>
         </nav>
     </header>
-
     <main>
         <div class="container">
             <h1>Tous les sujets</h1>
-            
+
             <div class="filters">
                 <div class="category-filter">
                     <form action="/threads" method="get">
@@ -54,19 +59,20 @@
                         <select id="category-select" name="category" onchange="this.form.submit()">
                             <option value="">Toutes les catégories</option>
                             {{ range .categories }}
-                            <option value="{{ .ID }}" {{ if eq (printf "%d" .ID) $.categoryID }}selected{{ end }}>{{ .Name }}</option>
+                            <option value="{{ .ID }}" {{ if eq (printf "%d" .ID) $.categoryID }}selected{{ end }}>{{
+                                .Name }}</option>
                             {{ end }}
                         </select>
                     </form>
                 </div>
-                
+
                 {{ if .isLoggedIn }}
                 <div class="new-thread">
                     <button class="new-thread-btn btn-primary">Nouveau sujet</button>
                 </div>
                 {{ end }}
             </div>
-            
+
             {{ if eq (len .threads) 0 }}
             <div class="no-threads">
                 <p>Aucun sujet trouvé. Soyez le premier à en créer un!</p>
@@ -81,62 +87,66 @@
                         <span>Dans <a href="/category/{{ .CategoryID }}">{{ .Category.Name }}</a></span>
                         <span>{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
                     </div>
-                    <p class="thread-excerpt">{{ if gt (len .Content) 300 }}{{ slice .Content 0 300 }}...{{ else }}{{ .Content }}{{ end }}</p>
+                    <p class="thread-excerpt">{{ if gt (len .Content) 300 }}{{ slice .Content 0 300 }}...{{ else }}{{
+                        .Content }}{{ end }}</p>
                 </div>
                 {{ end }}
             </div>
-            
+
             {{ if gt .totalPages 1 }}
             <div class="pagination">
                 {{ if gt .page 1 }}
-                <a href="/threads?page={{ sub .page 1 }}{{ if .categoryID }}&category={{ .categoryID }}{{ end }}" class="page-link">&laquo; Précédent</a>
+                <a href="/threads?page={{ sub .page 1 }}{{ if .categoryID }}&category={{ .categoryID }}{{ end }}"
+                    class="page-link">&laquo; Précédent</a>
                 {{ end }}
-                
+
                 {{ range $i := seq 1 .totalPages }}
-                <a href="/threads?page={{ $i }}{{ if $.categoryID }}&category={{ $.categoryID }}{{ end }}" class="page-link {{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
+                <a href="/threads?page={{ $i }}{{ if $.categoryID }}&category={{ $.categoryID }}{{ end }}"
+                    class="page-link {{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
                 {{ end }}
-                
+
                 {{ if lt .page .totalPages }}
-                <a href="/threads?page={{ add .page 1 }}{{ if .categoryID }}&category={{ .categoryID }}{{ end }}" class="page-link">Suivant &raquo;</a>
+                <a href="/threads?page={{ add .page 1 }}{{ if .categoryID }}&category={{ .categoryID }}{{ end }}"
+                    class="page-link">Suivant &raquo;</a>
                 {{ end }}
             </div>
             {{ end }}
             {{ end }}
         </div>
 
-<!-- Modal pour créer un nouveau sujet -->
-{{ if .isLoggedIn }}
-<div id="new-thread-modal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Nouveau sujet</h2>
-        <form id="new-thread-form" action="/threads/create" method="POST">
-            <div class="form-group">
-                <label for="category">Catégorie</label>
-                <select id="category" name="category_id" required>
-                    <option value="">Sélectionner une catégorie</option>
-                    {{ range .categories }}
-                    <option value="{{ .ID }}">{{ .Name }}</option>
-                    {{ end }}
-                </select>
+        <!-- Modal pour créer un nouveau sujet -->
+        {{ if .isLoggedIn }}
+        <div id="new-thread-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Nouveau sujet</h2>
+                <form id="new-thread-form" action="/threads/create" method="POST">
+                    <div class="form-group">
+                        <label for="category">Catégorie</label>
+                        <select id="category" name="category_id" required>
+                            <option value="">Sélectionner une catégorie</option>
+                            {{ range .categories }}
+                            <option value="{{ .ID }}">{{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Titre</label>
+                        <input type="text" id="title" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="content">Contenu</label>
+                        <textarea id="content" name="content" rows="6" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="tags">Tags (séparés par des virgules)</label>
+                        <input type="text" id="tags" name="tags">
+                    </div>
+                    <button type="submit" class="btn-primary">Créer</button>
+                </form>
             </div>
-            <div class="form-group">
-                <label for="title">Titre</label>
-                <input type="text" id="title" name="title" required>
-            </div>
-            <div class="form-group">
-                <label for="content">Contenu</label>
-                <textarea id="content" name="content" rows="6" required></textarea>
-            </div>
-            <div class="form-group">
-                <label for="tags">Tags (séparés par des virgules)</label>
-                <input type="text" id="tags" name="tags">
-            </div>
-            <button type="submit" class="btn-primary">Créer</button>
-        </form>
-    </div>
-</div>
-{{ end }}
+        </div>
+        {{ end }}
     </main>
 
     <footer>
@@ -165,4 +175,5 @@
 
     <script src="/static/js/main.js"></script>
 </body>
+
 </html>
