@@ -33,13 +33,81 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 
 	// Routes pour les pages HTML
 	r.GET("/", func(c *gin.Context) {
-		token, _ := c.Get("token")
 		isLoggedIn, _ := c.Get("isLoggedIn")
+		userID, _ := c.Get("userID")
+
+		// Pagination pour les posts
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+
+		// Initialiser posts comme un slice vide (pas nil)
+		posts := []models.Post{}
+		var total int64 = 0
+
+		// Vérifier si la table Posts existe
+		if database.DB.Migrator().HasTable(&models.Post{}) {
+			// Compter le nombre total de posts
+			database.DB.Model(&models.Post{}).Count(&total)
+
+			// Récupérer les posts avec pagination si la table existe
+			if total > 0 {
+				// Offset pour la pagination
+				offset := (page - 1) * pageSize
+
+				// Récupérer les posts avec pagination
+				database.DB.Order("created_at DESC").
+					Preload("User").
+					Limit(pageSize).
+					Offset(offset).
+					Find(&posts)
+
+				// Récupérer les commentaires pour chaque post
+				for i := range posts {
+					database.DB.Where("post_id = ?", posts[i].ID).
+						Preload("User").
+						Order("created_at ASC").
+						Find(&posts[i].Comments)
+				}
+			}
+		}
+
+		// Calculer le nombre total de pages
+		totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+		if page < 1 {
+			page = 1
+		}
+		if page > totalPages && totalPages > 0 {
+			page = totalPages
+		}
+
+		// Récupérer les catégories populaires
+		var categories []models.Category
+		database.DB.Order("id").Limit(5).Find(&categories)
+
+		// Récupérer les threads récents
+		var recentThreads []models.Thread
+		database.DB.Order("created_at DESC").
+			Preload("User").
+			Preload("Category").
+			Limit(5).
+			Find(&recentThreads)
+
+		// Récupérer les utilisateurs récemment inscrits
+		var recentUsers []models.User
+		database.DB.Order("created_at DESC").Limit(5).Find(&recentUsers)
 
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"title":      "Forum Éducatif - Accueil",
-			"token":      token,
-			"isLoggedIn": isLoggedIn,
+			"title":         "Accueil",
+			"isLoggedIn":    isLoggedIn,
+			"userID":        userID,
+			"posts":         posts,
+			"categories":    categories,
+			"recentThreads": recentThreads,
+			"recentUsers":   recentUsers,
+			"page":          page,
+			"pageSize":      pageSize,
+			"totalPages":    totalPages,
+			"total":         total,
 		})
 	})
 
@@ -1003,6 +1071,168 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 
 		// Rediriger vers le nouveau thread
 		c.Redirect(http.StatusFound, fmt.Sprintf("/thread/%d", thread.ID))
+	})
+
+	// Route pour créer une nouvelle publication
+	r.POST("/posts/create", func(c *gin.Context) {
+		// Vérifier si l'utilisateur est authentifié
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if !isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		userID, _ := c.Get("userID")
+
+		// Convertir userID en uint
+		var postUserID uint
+		switch v := userID.(type) {
+		case float64:
+			postUserID = uint(v)
+		case uint:
+			postUserID = v
+		case int:
+			postUserID = uint(v)
+		default:
+			c.Redirect(http.StatusFound, "/?error=invalid_user")
+			return
+		}
+
+		// Récupérer le contenu du post
+		content := c.PostForm("content")
+		if content == "" {
+			c.Redirect(http.StatusFound, "/?error=empty_content")
+			return
+		}
+
+		// Créer un nouveau post
+		post := models.Post{
+			Content:   content,
+			UserID:    postUserID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+
+		// Traiter l'image si elle existe
+		file, err := c.FormFile("image")
+		if err == nil {
+			// Créer le dossier uploads s'il n'existe pas
+			os.MkdirAll("static/uploads", os.ModePerm)
+
+			// Générer un nom de fichier unique
+			filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+			filepath := "static/uploads/" + filename
+
+			// Sauvegarder le fichier
+			if err := c.SaveUploadedFile(file, filepath); err != nil {
+				fmt.Printf("Erreur lors de l'enregistrement du fichier: %v\n", err)
+			} else {
+				post.Image = "/static/uploads/" + filename
+			}
+		}
+
+		// Sauvegarder le post dans la base de données
+		if err := database.DB.Create(&post).Error; err != nil {
+			c.Redirect(http.StatusFound, "/?error=db_error")
+			return
+		}
+
+		// Rediriger vers la page d'accueil
+		c.Redirect(http.StatusFound, "/")
+	})
+
+	// Route pour ajouter un commentaire
+	r.POST("/posts/:id/comment", func(c *gin.Context) {
+		// Vérifier si l'utilisateur est authentifié
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if !isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		userID, _ := c.Get("userID")
+
+		// Convertir userID en uint
+		var commentUserID uint
+		switch v := userID.(type) {
+		case float64:
+			commentUserID = uint(v)
+		case uint:
+			commentUserID = v
+		case int:
+			commentUserID = uint(v)
+		default:
+			c.Redirect(http.StatusFound, "/?error=invalid_user")
+			return
+		}
+
+		// Récupérer l'ID du post
+		postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/?error=invalid_post")
+			return
+		}
+
+		// Récupérer le contenu du commentaire
+		content := c.PostForm("content")
+		if content == "" {
+			c.Redirect(http.StatusFound, "/?error=empty_comment")
+			return
+		}
+
+		// Créer un nouveau commentaire
+		comment := models.Comment{
+			Content:   content,
+			UserID:    commentUserID,
+			PostID:    uint(postID),
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+
+		// Sauvegarder le commentaire dans la base de données
+		if err := database.DB.Create(&comment).Error; err != nil {
+			c.Redirect(http.StatusFound, "/?error=db_error")
+			return
+		}
+
+		// Rediriger vers la page d'accueil
+		c.Redirect(http.StatusFound, "/")
+	})
+
+	// Route pour aimer un post
+	r.POST("/posts/:id/like", func(c *gin.Context) {
+		// Vérifier si l'utilisateur est authentifié
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if !isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		// Récupérer l'ID du post
+		postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/?error=invalid_post")
+			return
+		}
+
+		// Récupérer le post
+		var post models.Post
+		if err := database.DB.First(&post, postID).Error; err != nil {
+			c.Redirect(http.StatusFound, "/?error=post_not_found")
+			return
+		}
+
+		// Incrémenter le nombre de likes
+		post.Likes++
+
+		// Sauvegarder le post dans la base de données
+		if err := database.DB.Save(&post).Error; err != nil {
+			c.Redirect(http.StatusFound, "/?error=db_error")
+			return
+		}
+
+		// Rediriger vers la page d'accueil
+		c.Redirect(http.StatusFound, "/")
 	})
 
 	return r

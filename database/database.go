@@ -26,21 +26,6 @@ func Connect() error {
 }
 
 func Migrate() error {
-	// Supprimer les tables existantes
-	DB.Exec("SET FOREIGN_KEY_CHECKS = 0")
-
-	// Supprimer la table de jointure en premier
-	DB.Exec("DROP TABLE IF EXISTS thread_tags")
-
-	// Puis les autres tables
-	DB.Exec("DROP TABLE IF EXISTS votes")
-	DB.Exec("DROP TABLE IF EXISTS messages")
-	DB.Exec("DROP TABLE IF EXISTS threads")
-	DB.Exec("DROP TABLE IF EXISTS tags")
-	DB.Exec("DROP TABLE IF EXISTS categories")
-	DB.Exec("DROP TABLE IF EXISTS users")
-
-	DB.Exec("SET FOREIGN_KEY_CHECKS = 1")
 
 	// Migrer les modèles
 	return DB.AutoMigrate(
@@ -50,6 +35,8 @@ func Migrate() error {
 		&models.Thread{},
 		&models.Message{},
 		&models.Vote{},
+		&models.Post{},
+		&models.Comment{},
 	)
 }
 
