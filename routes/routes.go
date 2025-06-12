@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -43,29 +44,152 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 	})
 
 	r.GET("/login", func(c *gin.Context) {
+		// Vérifier si l'utilisateur est déjà connecté
 		isLoggedIn, _ := c.Get("isLoggedIn")
 		if isLoggedIn.(bool) {
 			c.Redirect(http.StatusFound, "/")
 			return
 		}
+
+		// Récupérer les messages de l'URL
+		errorMsg := c.Query("error")
+		registered := c.Query("registered")
 
 		c.HTML(http.StatusOK, "login.html", gin.H{
 			"title":      "Connexion",
-			"isLoggedIn": false,
+			"error":      errorMsg,
+			"registered": registered,
 		})
 	})
 
+	// Route pour traiter le formulaire de connexion
+	r.POST("/login", func(c *gin.Context) {
+		identifier := c.PostForm("identifier")
+		password := c.PostForm("password")
+
+		// Validation des entrées
+		if identifier == "" || password == "" {
+			c.Redirect(http.StatusFound, "/login?error=empty")
+			return
+		}
+
+		// Rechercher l'utilisateur dans la base de données
+		var user models.User
+		result := database.DB.Where("username = ? OR email = ?", identifier, identifier).First(&user)
+
+		if result.Error != nil {
+			// Utilisateur non trouvé
+			c.Redirect(http.StatusFound, "/login?error=invalid")
+			return
+		}
+
+		// Vérifier le mot de passe
+		err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+		if err != nil {
+			// Mot de passe incorrect
+			c.Redirect(http.StatusFound, "/login?error=invalid")
+			return
+		}
+
+		// Mettre à jour la dernière connexion
+		now := time.Now()
+		user.LastLogin = &now
+		database.DB.Save(&user)
+
+		// Créer un token JWT
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"sub": user.ID,
+			"exp": time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 jours
+		})
+
+		tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		if err != nil {
+			c.Redirect(http.StatusFound, "/login?error=server")
+			return
+		}
+
+		// Définir le cookie d'authentification
+		c.SetCookie("token", tokenString, 3600*24*7, "/", "", false, true)
+
+		// Rediriger vers la page d'accueil
+		c.Redirect(http.StatusFound, "/")
+	})
+
 	r.GET("/register", func(c *gin.Context) {
+		// Vérifier si l'utilisateur est déjà connecté
 		isLoggedIn, _ := c.Get("isLoggedIn")
 		if isLoggedIn.(bool) {
 			c.Redirect(http.StatusFound, "/")
 			return
 		}
 
+		// Récupérer le message d'erreur s'il existe
+		errorMsg := c.Query("error")
+
 		c.HTML(http.StatusOK, "register.html", gin.H{
-			"title":      "Inscription",
-			"isLoggedIn": false,
+			"title": "Inscription",
+			"error": errorMsg,
 		})
+	})
+
+	r.POST("/register", func(c *gin.Context) {
+		username := c.PostForm("username")
+		email := c.PostForm("email")
+		password := c.PostForm("password")
+		passwordConfirm := c.PostForm("password_confirm")
+
+		// Validation des entrées
+		if username == "" || email == "" || password == "" || passwordConfirm == "" {
+			c.Redirect(http.StatusFound, "/register?error=empty")
+			return
+		}
+
+		if password != passwordConfirm {
+			c.Redirect(http.StatusFound, "/register?error=password_match")
+			return
+		}
+
+		if len(password) < 8 {
+			c.Redirect(http.StatusFound, "/register?error=password_short")
+			return
+		}
+
+		// Vérifier si l'email est déjà utilisé
+		var existingUser models.User
+		if err := database.DB.Where("email = ?", email).First(&existingUser).Error; err == nil {
+			c.Redirect(http.StatusFound, "/register?error=email_exists")
+			return
+		}
+
+		// Vérifier si le nom d'utilisateur est déjà utilisé
+		if err := database.DB.Where("username = ?", username).First(&existingUser).Error; err == nil {
+			c.Redirect(http.StatusFound, "/register?error=username_exists")
+			return
+		}
+
+		// Hasher le mot de passe
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/register?error=server")
+			return
+		}
+
+		// Créer l'utilisateur
+		user := models.User{
+			Username:  username,
+			Email:     email,
+			Password:  string(hashedPassword),
+			Role:      "user",
+			CreatedAt: time.Now(),
+		}
+
+		if err := database.DB.Create(&user).Error; err != nil {
+			c.Redirect(http.StatusFound, "/register?error=server")
+			return
+		}
+
+		// Rediriger vers la page de connexion avec un message de succès
+		c.Redirect(http.StatusFound, "/login?registered=true")
 	})
 
 	r.GET("/threads", func(c *gin.Context) {

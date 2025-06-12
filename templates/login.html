@@ -45,7 +45,26 @@
     <main>
         <div class="auth-container">
             <h2>Connexion</h2>
-            <form id="login-form" action="/api/auth/login" method="POST">
+            {{ if .error }}
+<div class="error-box">
+    {{ if eq .error "empty" }}
+    Veuillez remplir tous les champs.
+    {{ else if eq .error "invalid" }}
+    Identifiant ou mot de passe incorrect.
+    {{ else if eq .error "server" }}
+    Une erreur est survenue. Veuillez réessayer.
+    {{ else }}
+    {{ .error }}
+    {{ end }}
+</div>
+{{ end }}
+
+{{ if .registered }}
+<div class="success-box">
+    Inscription réussie ! Vous pouvez maintenant vous connecter.
+</div>
+{{ end }}
+            <form id="login-form" action="/login" method="POST">
                 <div class="form-group">
                     <label for="identifier">Email ou nom d'utilisateur : </label>
                     <input type="text" id="identifier" name="identifier" required>
@@ -85,7 +104,7 @@
         </div>
     </footer>
 
-    <script src="/static/js/auth.js"></script>
+ 
 </body>
 
 </html>
