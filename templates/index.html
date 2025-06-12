@@ -1,35 +1,29 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .title }}</title>
-    <link rel="stylesheet" href="/static/css/index.css">
+    <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/header.css">
     <link rel="stylesheet" href="/static/css/footer.css">
-
+    <link rel="stylesheet" href="/static/css/newsfeed.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
-
 <body>
     <header>
         <nav>
             <div class="logo">
-                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo" /></a>
+                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo"></a>
             </div>
-
             <div class="search-container">
                 <form action="/search" method="get">
-                    <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}" />
-                    <button type="submit" class="search-btn">
-                        <img src="/static/assets/searchIcon.png" alt="Rechercher" class="search-icon" />
-                    </button>
+                    <input type="text" name="q" placeholder="Rechercher un sujet...">
+                    <button type="submit"><i class="fa fa-search"></i></button>
                 </form>
             </div>
-
             <ul class="nav-links">
                 <li><a href="/threads">Sujets</a></li>
-
                 {{ if .isLoggedIn }}
                 <li class="user-links">
                     <div class="menu-container">
@@ -51,33 +45,154 @@
     </header>
 
     <main>
-        <section class="hero">
-            <h1>Bienvenue sur le Forum Éducatif</h1>
-            <p>Un espace d'échange et d'apprentissage pour tous</p>
-            <a href="/threads" class="btn-primary">Découvrir les sujets</a>
-        </section>
-
-        <section class="features">
-            <div class="feature-card">
-                <h3>Discutez</h3>
-                <p>Échangez vos idées et vos connaissances avec d'autres apprenants</p>
+        <div class="home-container">
+            <div class="newsfeed-column">
+                <h2>Fil d'actualité</h2>
+                
+                {{ if .isLoggedIn }}
+                <div class="post-form-container">
+                    <form action="/posts/create" method="POST" enctype="multipart/form-data">
+                        <div class="post-form">
+                            <textarea name="content" placeholder="Partagez quelque chose..." required></textarea>
+                            <div class="post-form-actions">
+                                <label for="image-upload" class="image-upload-label">
+                                    <i class="fas fa-image"></i> Ajouter une image
+                                </label>
+                                <input type="file" id="image-upload" name="image" accept="image/*">
+                                <button type="submit" class="btn-primary">Publier</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                {{ end }}
+                
+                {{ if or (not .posts) (eq (len .posts) 0) }}
+                <div class="no-posts">
+                    <p>Aucune publication pour le moment. Soyez le premier à partager quelque chose !</p>
+                </div>
+                {{ else }}
+                <div class="posts-container">
+                    {{ range .posts }}
+                    <div class="post-card">
+                        <div class="post-header">
+                            <img src="/static/assets/accountIcon.png" alt="Avatar" class="post-avatar">
+                            <div class="post-info">
+                                <h3>{{ .User.Username }}</h3>
+                                <span class="post-date">{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                            </div>
+                        </div>
+                        <div class="post-content">
+                            <p>{{ .Content }}</p>
+                            {{ if .Image }}
+                            <div class="post-image">
+                                <img src="{{ .Image }}" alt="Image de la publication">
+                            </div>
+                            {{ end }}
+                        </div>
+                        <div class="post-actions">
+                            <form action="/posts/{{ .ID }}/like" method="POST">
+                                <button type="submit" class="like-button">
+                                    <i class="fas fa-heart"></i> {{ .Likes }}
+                                </button>
+                            </form>
+                            <button class="comment-button" onclick="toggleCommentForm({{ .ID }})">
+<i class="fas fa-comment"></i> {{ if .Comments }}{{ len .Comments }}{{ else }}0{{ end }}
+                            </button>
+                        </div>
+                        
+                        <!-- Commentaires -->
+                        <div class="comments-section">
+                            <div class="comments-list">
+                                {{ range .Comments }}
+                                <div class="comment">
+                                    <div class="comment-header">
+                                        <img src="/static/assets/accountIcon.png" alt="Avatar" class="comment-avatar">
+                                        <div class="comment-info">
+                                            <h4>{{ .User.Username }}</h4>
+                                            <span class="comment-date">{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="comment-content">
+                                        <p>{{ .Content }}</p>
+                                    </div>
+                                </div>
+                                {{ end }}
+                            </div>
+                            
+                            {{ if $.isLoggedIn }}
+                            <div class="comment-form" id="comment-form-{{ .ID }}">
+                                <form action="/posts/{{ .ID }}/comment" method="POST">
+                                    <textarea name="content" placeholder="Ajouter un commentaire..." required></textarea>
+                                    <button type="submit" class="btn-primary">Commenter</button>
+                                </form>
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                    {{ end }}
+                </div>
+                
+                <!-- Pagination -->
+                {{ if gt .totalPages 1 }}
+                <div class="pagination">
+                    {{ if gt .page 1 }}
+                    <a href="/?page={{ sub .page 1 }}" class="page-link">&laquo; Précédent</a>
+                    {{ end }}
+                    
+                    {{ range $i := seq 1 .totalPages }}
+                    <a href="/?page={{ $i }}" class="page-link {{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
+                    {{ end }}
+                    
+                    {{ if lt .page .totalPages }}
+                    <a href="/?page={{ add .page 1 }}" class="page-link">Suivant &raquo;</a>
+                    {{ end }}
+                </div>
+                {{ end }}
+                {{ end }}
             </div>
-            <div class="feature-card">
-                <h3>Apprenez</h3>
-                <p>Découvrez de nouveaux sujets et approfondissez vos connaissances</p>
+            
+            <div class="sidebar-column">
+                <div class="sidebar-widget">
+                    <h3>Catégories populaires</h3>
+                    <ul class="category-list">
+                        {{ range .categories }}
+                        <li><a href="/category/{{ .ID }}">{{ .Name }}</a></li>
+                        {{ end }}
+                    </ul>
+                </div>
+                
+                <div class="sidebar-widget">
+                    <h3>Discussions récentes</h3>
+                    <ul class="recent-threads-list">
+                        {{ range .recentThreads }}
+                        <li>
+                            <a href="/thread/{{ .ID }}">{{ .Title }}</a>
+                            <span class="thread-meta">par {{ .User.Username }}</span>
+                        </li>
+                        {{ end }}
+                    </ul>
+                </div>
+                
+                <div class="sidebar-widget">
+                    <h3>Nouveaux membres</h3>
+                    <ul class="recent-users-list">
+                        {{ range .recentUsers }}
+                        <li>
+                            <a href="/threads?user={{ .ID }}">{{ .Username }}</a>
+                            <span class="user-joined">inscrit le {{ .CreatedAt.Format "02/01/2006" }}</span>
+                        </li>
+                        {{ end }}
+                    </ul>
+                </div>
             </div>
-            <div class="feature-card">
-                <h3>Partagez</h3>
-                <p>Contribuez à la communauté en partageant votre expertise</p>
-            </div>
-        </section>
+        </div>
     </main>
 
     <footer>
         <div class="footer-container">
             <div class="footer-section">
                 <h4>Forum Éducatif</h4>
-                <p>Un espace d’échange et d’apprentissage pour tous les passionnés de savoir.</p>
+                <p>Un espace d'échange et d'apprentissage pour tous les passionnés de savoir.</p>
             </div>
             <div class="footer-section">
                 <h4>Contact</h4>
@@ -97,7 +212,28 @@
         </div>
     </footer>
 
-    <script src="/static/js/main.js"></script>
+    <script>
+        function toggleCommentForm(postId) {
+            const commentForm = document.getElementById(`comment-form-${postId}`);
+            if (commentForm.style.display === 'block') {
+                commentForm.style.display = 'none';
+            } else {
+                commentForm.style.display = 'block';
+            }
+        }
+        
+        // Afficher le nom du fichier sélectionné
+        const fileInput = document.getElementById('image-upload');
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                const label = document.querySelector('.image-upload-label');
+                if (this.files.length > 0) {
+                    label.textContent = this.files[0].name;
+                } else {
+                    label.innerHTML = '<i class="fas fa-image"></i> Ajouter une image';
+                }
+            });
+        }
+    </script>
 </body>
-
 </html>
