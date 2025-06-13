@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <link rel="stylesheet" href="/static/css/newsfeed.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
+
 <body>
     <header>
         <nav>
@@ -48,7 +50,7 @@
         <div class="home-container">
             <div class="newsfeed-column">
                 <h2>Fil d'actualité</h2>
-                
+
                 {{ if .isLoggedIn }}
                 <div class="post-form-container">
                     <form action="/posts/create" method="POST" enctype="multipart/form-data">
@@ -65,7 +67,7 @@
                     </form>
                 </div>
                 {{ end }}
-                
+
                 {{ if or (not .posts) (eq (len .posts) 0) }}
                 <div class="no-posts">
                     <p>Aucune publication pour le moment. Soyez le premier à partager quelque chose !</p>
@@ -95,11 +97,11 @@
                                     <i class="fas fa-heart"></i> {{ .Likes }}
                                 </button>
                             </form>
-                            <button class="comment-button" onclick="toggleCommentForm({{ .ID }})">
-<i class="fas fa-comment"></i> {{ if .Comments }}{{ len .Comments }}{{ else }}0{{ end }}
+                            <button class="comment-button" onclick="toggleCommentForm('{{ .ID }}')">
+                                <i class="fas fa-comment"></i> {{ if .Comments }}{{ len .Comments }}{{ else }}0{{ end }}
                             </button>
                         </div>
-                        
+
                         <!-- Commentaires -->
                         <div class="comments-section">
                             <div class="comments-list">
@@ -109,7 +111,8 @@
                                         <img src="/static/assets/accountIcon.png" alt="Avatar" class="comment-avatar">
                                         <div class="comment-info">
                                             <h4>{{ .User.Username }}</h4>
-                                            <span class="comment-date">{{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                                            <span class="comment-date">{{ .CreatedAt.Format "02/01/2006 à 15:04"
+                                                }}</span>
                                         </div>
                                     </div>
                                     <div class="comment-content">
@@ -118,11 +121,12 @@
                                 </div>
                                 {{ end }}
                             </div>
-                            
+
                             {{ if $.isLoggedIn }}
                             <div class="comment-form" id="comment-form-{{ .ID }}">
                                 <form action="/posts/{{ .ID }}/comment" method="POST">
-                                    <textarea name="content" placeholder="Ajouter un commentaire..." required></textarea>
+                                    <textarea name="content" placeholder="Ajouter un commentaire..."
+                                        required></textarea>
                                     <button type="submit" class="btn-primary">Commenter</button>
                                 </form>
                             </div>
@@ -131,18 +135,18 @@
                     </div>
                     {{ end }}
                 </div>
-                
+
                 <!-- Pagination -->
                 {{ if gt .totalPages 1 }}
                 <div class="pagination">
                     {{ if gt .page 1 }}
                     <a href="/?page={{ sub .page 1 }}" class="page-link">&laquo; Précédent</a>
                     {{ end }}
-                    
+
                     {{ range $i := seq 1 .totalPages }}
                     <a href="/?page={{ $i }}" class="page-link {{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
                     {{ end }}
-                    
+
                     {{ if lt .page .totalPages }}
                     <a href="/?page={{ add .page 1 }}" class="page-link">Suivant &raquo;</a>
                     {{ end }}
@@ -150,7 +154,7 @@
                 {{ end }}
                 {{ end }}
             </div>
-            
+
             <div class="sidebar-column">
                 <div class="sidebar-widget">
                     <h3>Catégories populaires</h3>
@@ -160,7 +164,7 @@
                         {{ end }}
                     </ul>
                 </div>
-                
+
                 <div class="sidebar-widget">
                     <h3>Discussions récentes</h3>
                     <ul class="recent-threads-list">
@@ -172,7 +176,7 @@
                         {{ end }}
                     </ul>
                 </div>
-                
+
                 <div class="sidebar-widget">
                     <h3>Nouveaux membres</h3>
                     <ul class="recent-users-list">
@@ -221,11 +225,11 @@
                 commentForm.style.display = 'block';
             }
         }
-        
+
         // Afficher le nom du fichier sélectionné
         const fileInput = document.getElementById('image-upload');
         if (fileInput) {
-            fileInput.addEventListener('change', function() {
+            fileInput.addEventListener('change', function () {
                 const label = document.querySelector('.image-upload-label');
                 if (this.files.length > 0) {
                     label.textContent = this.files[0].name;
@@ -236,4 +240,5 @@
         }
     </script>
 </body>
+
 </html>
