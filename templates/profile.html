@@ -18,11 +18,13 @@
                 <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo"></a>
             </div>
             <div class="search-container">
-                <form action="/search" method="get">
-                    <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}">
-                    <button type="submit"><i class="fa fa-search"></i></button>
-                </form>
+                form action="/search" method="get">
+        <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}" />
+        <button type="submit" class="search-btn">
+            <img src="/static/assets/searchIcon.png" alt="Rechercher" class="search-icon" />
+        </button>
             </div>
+
             <ul class="nav-links">
                 <li><a href="/threads">Sujets</a></li>
                 {{ if .isLoggedIn }}

@@ -743,3 +743,86 @@ func HandleMessageForm(c *gin.Context) {
 	// Rediriger vers la page du thread
 	c.Redirect(http.StatusFound, fmt.Sprintf("/thread/%d", threadID))
 }
+
+func SearchThreads(c *gin.Context) {
+	// Récupérer le terme de recherche
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Le terme de recherche est vide"})
+		return
+	}
+
+	// Vérifier si la recherche est un tag (commence par #)
+	var threads []models.Thread
+	var totalResults int64
+
+	if strings.HasPrefix(query, "#") {
+		// Recherche par tag (enlever le # du début)
+		tagName := strings.TrimPrefix(query, "#")
+
+		// Trouver d'abord le tag
+		var tag models.Tag
+		if err := DB.Where("name LIKE ?", tagName).First(&tag).Error; err != nil {
+			// Si le tag n'existe pas, retourner un résultat vide
+			c.JSON(http.StatusOK, gin.H{
+				"threads": []models.Thread{},
+				"total":   0,
+				"query":   query,
+			})
+			return
+		}
+
+		// Trouver les threads associés à ce tag
+		if err := DB.Model(&models.Thread{}).
+			Joins("JOIN thread_tags ON threads.id = thread_tags.thread_id").
+			Where("thread_tags.tag_id = ?", tag.ID).
+			Count(&totalResults).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur de base de données"})
+			return
+		}
+
+		if err := DB.Preload("User").Preload("Category").Preload("Tags").
+			Joins("JOIN thread_tags ON threads.id = thread_tags.thread_id").
+			Where("thread_tags.tag_id = ?", tag.ID).
+			Find(&threads).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur de base de données"})
+			return
+		}
+	} else {
+		// Recherche par titre
+		searchTerm := "%" + query + "%"
+
+		if err := DB.Model(&models.Thread{}).
+			Where("title LIKE ? OR content LIKE ?", searchTerm, searchTerm).
+			Count(&totalResults).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur de base de données"})
+			return
+		}
+
+		if err := DB.Preload("User").Preload("Category").Preload("Tags").
+			Where("title LIKE ? OR content LIKE ?", searchTerm, searchTerm).
+			Find(&threads).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur de base de données"})
+			return
+		}
+	}
+
+	// Vérifier le format de réponse demandé
+	if c.GetHeader("Accept") == "application/json" {
+		c.JSON(http.StatusOK, gin.H{
+			"threads": threads,
+			"total":   totalResults,
+			"query":   query,
+		})
+	} else {
+		// Retourner une page HTML
+		c.HTML(http.StatusOK, "search_results.html", gin.H{
+			"title":      "Résultats de recherche pour: " + query,
+			"threads":    threads,
+			"total":      totalResults,
+			"query":      query,
+			"isLoggedIn": c.GetBool("isLoggedIn"),
+			"userID":     c.GetUint("userID"),
+		})
+	}
+}
