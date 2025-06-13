@@ -343,9 +343,16 @@ main {
 }
 
 .category-label {
-    margin-right: 0.5rem;
+    display: inline-block;
+    background: #f5b461;
     color: #003366;
-    font-weight: 500;
+    font-weight: 600;
+    padding: 0.2em 0.8em;
+    border-radius: 999px;
+    font-size: 0.95em;
+    margin-bottom: 0.5em;
+    margin-right: 0.5em;
+    vertical-align: middle;
 }
 
 @media (max-width: 900px) {

@@ -6,6 +6,7 @@ body {
     box-sizing: border-box;
     font-family: "Segoe UI", sans-serif;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    overflow-x: hidden;
 }
 
 main {
@@ -186,6 +187,46 @@ main {
 .error-message.show {
     display: block;
 }
+
+.thread-item {
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.thread-item p {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 7.5em;
+    line-height: 1.5em;
+    color: #222;
+    margin-bottom: 1rem;
+}
+
+.message-item {
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.message-item p {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 7.5em;
+    line-height: 1.5em;
+    color: #222;
+    margin-bottom: 1rem;
+}
+
+
 
 @media (max-width: 900px) {
     .container {
