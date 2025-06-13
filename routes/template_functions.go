@@ -2,6 +2,7 @@ package routes
 
 import (
 	"html/template"
+	"time"
 )
 
 // TemplateFuncs est un map des fonctions utilitaires à utiliser dans les templates
@@ -30,5 +31,15 @@ var TemplateFuncs = template.FuncMap{
 			result = append(result, i)
 		}
 		return result
+	},
+	"formatDate": func(t time.Time) string {
+		return t.Format("02/01/2006 à 15:04")
+	},
+	// Ajouter également une fonction truncate pour tronquer le texte
+	"truncate": func(s string, l int) string {
+		if len(s) > l {
+			return s[:l] + "..."
+		}
+		return s
 	},
 }

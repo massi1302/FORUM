@@ -851,75 +851,7 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 		})
 	})
 
-	r.GET("/search", func(c *gin.Context) {
-		query := c.Query("q")
-		tag := c.Query("tag")
-		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-		pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
-
-		token, _ := c.Get("token")
-		_, isLoggedIn := c.Get("userID")
-
-		if query == "" && tag == "" {
-			c.HTML(http.StatusOK, "search.html", gin.H{
-				"title":      "Recherche",
-				"token":      token,
-				"isLoggedIn": isLoggedIn,
-			})
-			return
-		}
-
-		db := database.DB.Model(&models.Thread{})
-
-		// Construire la requête de recherche
-		if query != "" {
-			db = db.Where("title LIKE ? OR content LIKE ?", "%"+query+"%", "%"+query+"%")
-		}
-
-		if tag != "" {
-			db = db.Joins("JOIN thread_tags ON thread_tags.thread_id = threads.id").
-				Joins("JOIN tags ON tags.id = thread_tags.tag_id").
-				Where("tags.name = ?", tag)
-		}
-
-		// Compter le nombre total de résultats
-		var total int64
-		db.Count(&total)
-
-		// Calculer le nombre total de pages
-		totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
-		if page < 1 {
-			page = 1
-		}
-		if page > totalPages && totalPages > 0 {
-			page = totalPages
-		}
-
-		// Offset pour la pagination
-		offset := (page - 1) * pageSize
-
-		var threads []models.Thread
-		db.Order("created_at DESC").
-			Preload("User").
-			Preload("Category").
-			Preload("Tags").
-			Limit(pageSize).
-			Offset(offset).
-			Find(&threads)
-
-		c.HTML(http.StatusOK, "search.html", gin.H{
-			"title":      "Résultats de recherche",
-			"query":      query,
-			"tag":        tag,
-			"threads":    threads,
-			"token":      token,
-			"isLoggedIn": isLoggedIn,
-			"page":       page,
-			"pageSize":   pageSize,
-			"totalPages": totalPages,
-			"total":      total,
-		})
-	})
+	r.GET("/search", middlewares.Auth(), controllers.SearchThreads)
 
 	r.GET("/api/categories", controllers.GetCategories)
 

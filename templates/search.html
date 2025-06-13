@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/header.css">
+    <link rel="stylesheet" href="/static/css/footer.css">
+    <link rel="stylesheet" href="/static/css/threads.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo" /></a>
+            </div>
+
+            <div class="search-container">
+                <form action="/search" method="get">
+                    <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}" />
+                    <button type="submit" class="search-btn">
+                        <img src="/static/assets/searchIcon.png" alt="Rechercher" class="search-icon" />
+                    </button>
+                </form>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="/threads">Sujets</a></li>
+
+                {{ if .isLoggedIn }}
+                <li class="user-links">
+                    <div class="menu-container">
+                        <img class="accountIcon" src="/static/assets/accountIcon.png" alt="Compte" tabindex="0" />
+                        <div class="dropdown">
+                            <a href="/profile">Mon profil</a>
+                            <a href="/logout">Déconnexion</a>
+                        </div>
+                    </div>
+                </li>
+                {{ else }}
+                <li class="auth-links">
+                    <a href="/login">Connexion</a>
+                    <a href="/register" class="btn-primary">Inscription</a>
+                </li>
+                {{ end }}
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            <h1>Résultats de recherche pour: {{ .query }}</h1>
+            
+            <div class="search-info">
+                <p>{{ .total }} résultats trouvés</p>
+            </div>
+
+            {{ if eq (len .threads) 0 }}
+            <div class="no-threads">
+                <p>Aucun sujet trouvé pour cette recherche.</p>
+                <p>Essayez avec d'autres termes ou consultez tous les <a href="/threads">sujets disponibles</a>.</p>
+            </div>
+            {{ else }}
+            <div class="threads-list">
+                {{ range .threads }}
+                <div class="thread-card">
+                    <div class="thread-header">
+                        <h2><a href="/thread/{{ .ID }}">{{ .Title }}</a></h2>
+                        <div class="thread-tags">
+                            {{ range .Tags }}
+                            <span class="tag"><a href="/search?q=%23{{ .Name }}">#{{ .Name }}</a></span>
+                            {{ end }}
+                        </div>
+                    </div>
+                    <div class="thread-meta">
+                        <div class="thread-author">
+                            <img src="/static/assets/user-avatar.png" alt="Avatar" class="avatar-small">
+                            <span>Par <a href="/profile/{{ .User.ID }}">{{ .User.Username }}</a></span>
+                        </div>
+                        <div class="thread-stats">
+                            <span><i class="fas fa-calendar-alt"></i> {{ .CreatedAt.Format "02/01/2006 à 15:04" }}</span>
+                            <span><i class="fas fa-comment"></i> {{ len .Messages }} réponses</span>
+                            <span><i class="fas fa-folder"></i> <a href="/category/{{ .CategoryID }}">{{ .Category.Name }}</a></span>
+                        </div>
+                    </div>
+                    <p class="thread-excerpt">{{ if gt (len .Content) 200 }}{{ slice .Content 0 200 }}...{{ else }}{{ .Content }}{{ end }}</p>
+                </div>
+                {{ end }}
+            </div>
+            {{ end }}
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4>Forum Éducatif</h4>
+                <p>Un espace d'échange et d'apprentissage pour tous les passionnés de savoir.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <ul class="footer-contact">
+                    <li>Email : <a href="mailto:contact@forum-educatif.fr">contact@forum-educatif.fr</a></li>
+                    <li>Adresse : 123 Rue de l'Éducation, Paris</li>
+                </ul>
+                <div class="footer-social">
+                    <a href="#" title="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" title="Facebook"><i class="fab fa-facebook"></i></a>
+                    <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Forum Éducatif. Tous droits réservés.
+        </div>
+    </footer>
+</body>
+
+</html>
