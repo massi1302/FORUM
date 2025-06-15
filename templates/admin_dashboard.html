@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Forum Éducatif</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/header.css">
+    <link rel="stylesheet" href="/static/css/footer.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="/"><img class="logoImg" src="/static/assets/forumLogo.jpg" alt="Forum Logo" /></a>
+            </div>
+
+            <div class="search-container">
+                <form action="/search" method="get">
+                    <input type="text" name="q" placeholder="Rechercher un sujet..." value="{{ .query }}" />
+                    <button type="submit" class="search-btn">
+                        <img src="/static/assets/searchIcon.png" alt="Rechercher" class="search-icon" />
+                    </button>
+                </form>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="/threads">Sujets</a></li>
+                <li><a href="/admin" class="active">Admin</a></li>
+
+                <li class="user-links">
+                    <div class="menu-container">
+                        <img class="accountIcon" src="/static/assets/accountIcon.png" alt="Compte" tabindex="0" />
+                        <div class="dropdown">
+                            <a href="/profile">Mon profil</a>
+                            <a href="/logout">Déconnexion</a>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="admin-container">
+            <div class="admin-sidebar">
+                <h3>Administration</h3>
+                <ul>
+                    <li class="{{ if eq .activeTab "threads" }}active{{ end }}">
+                        <a href="/admin?tab=threads"><i class="fas fa-comments"></i> Fils de discussion</a>
+                    </li>
+                    <li class="{{ if eq .activeTab "messages" }}active{{ end }}">
+                        <a href="/admin?tab=messages"><i class="fas fa-envelope"></i> Messages</a>
+                    </li>
+                    <li class="{{ if eq .activeTab "users" }}active{{ end }}">
+                        <a href="/admin?tab=users"><i class="fas fa-users"></i> Utilisateurs</a>
+                    </li>
+                    <li class="{{ if eq .activeTab "categories" }}active{{ end }}">
+                        <a href="/admin?tab=categories"><i class="fas fa-folder"></i> Catégories</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="admin-content">
+                {{ if eq .activeTab "threads" }}
+                <div class="admin-section">
+                    <h2>Gestion des fils de discussion</h2>
+                    
+                    <div class="filters">
+                        <form method="get" action="/admin">
+                            <input type="hidden" name="tab" value="threads">
+                            <select name="status" onchange="this.form.submit()">
+                                <option value="all" {{ if eq .statusFilter "all" }}selected{{ end }}>Tous les statuts</option>
+                                <option value="active" {{ if eq .statusFilter "active" }}selected{{ end }}>Actifs</option>
+                                <option value="locked" {{ if eq .statusFilter "locked" }}selected{{ end }}>Verrouillés</option>
+                                <option value="archived" {{ if eq .statusFilter "archived" }}selected{{ end }}>Archivés</option>
+                            </select>
+                            <input type="text" name="search" placeholder="Rechercher un fil..." value="{{ .searchQuery }}">
+                            <button type="submit" class="btn-primary">Filtrer</button>
+                        </form>
+                    </div>
+
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Titre</th>
+                                    <th>Auteur</th>
+                                    <th>Catégorie</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .threads }}
+                                <tr>
+                                    <td>{{ .ID }}</td>
+                                    <td><a href="/thread/{{ .ID }}" target="_blank">{{ .Title }}</a></td>
+                                    <td>{{ .User.Username }}</td>
+                                    <td>{{ .Category.Name }}</td>
+                                    <td>{{ .CreatedAt.Format "02/01/2006 15:04" }}</td>
+                                    <td>
+                                        <span class="status-badge status-{{ .Status }}">{{ .Status }}</span>
+                                    </td>
+                                    <td class="actions">
+                                        <div class="dropdown-action">
+                                            <button class="btn-status"><i class="fas fa-exchange-alt"></i> Changer statut</button>
+                                            <div class="dropdown-content">
+                                                <form action="/admin/threads/{{ .ID }}/status" method="post">
+                                                    <input type="hidden" name="status" value="active">
+                                                    <button type="submit" class="status-btn active-btn">Activer</button>
+                                                </form>
+                                                <form action="/admin/threads/{{ .ID }}/status" method="post">
+                                                    <input type="hidden" name="status" value="locked">
+                                                    <button type="submit" class="status-btn locked-btn">Verrouiller</button>
+                                                </form>
+                                                <form action="/admin/threads/{{ .ID }}/status" method="post">
+                                                    <input type="hidden" name="status" value="archived">
+                                                    <button type="submit" class="status-btn archived-btn">Archiver</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <form action="/admin/threads/{{ .ID }}/delete" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce fil de discussion?')">
+                                            <button type="submit" class="btn-danger"><i class="fas fa-trash"></i> Supprimer</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{ if gt .totalPages 1 }}
+                    <div class="pagination">
+                        {{ if gt .page 1 }}
+                        <a href="/admin?tab=threads&page={{ sub .page 1 }}&status={{ .statusFilter }}&search={{ .searchQuery }}" class="page-link">&laquo; Précédent</a>
+                        {{ end }}
+
+                        {{ range $i := seq 1 .totalPages }}
+                        <a href="/admin?tab=threads&page={{ $i }}&status={{ $.statusFilter }}&search={{ $.searchQuery }}" class="page-link {{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
+                        {{ end }}
+
+                        {{ if lt .page .totalPages }}
+                        <a href="/admin?tab=threads&page={{ add .page 1 }}&status={{ .statusFilter }}&search={{ .searchQuery }}" class="page-link">Suivant &raquo;</a>
+                        {{ end }}
+                    </div>
+                    {{ end }}
+                </div>
+                {{ end }}
+
+                {{ if eq .activeTab "messages" }}
+                <div class="admin-section">
+                    <h2>Gestion des messages</h2>
+                    
+                    <div class="filters">
+                        <form method="get" action="/admin">
+                            <input type="hidden" name="tab" value="messages">
+                            <input type="text" name="search" placeholder="Rechercher un message..." value="{{ .searchQuery }}">
+                            <button type="submit" class="btn-primary">Filtrer</button>
+                        </form>
+                    </div>
+
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fil de discussion</th>
+                                    <th>Auteur</th>
+                                    <th>Contenu</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .messages }}
+                                <tr>
+                                    <td>{{ .ID }}</td>
+                                    <td><a href="/thread/{{ .ThreadID }}" target="_blank">{{ .Thread.Title }}</a></td>
+                                    <td>{{ .User.Username }}</td>
+                                    <td class="message-content">{{ if gt (len .Content) 100 }}{{ slice .Content 0 100 }}...{{ else }}{{ .Content }}{{ end }}</td>
+                                    <td>{{ .CreatedAt.Format "02/01/2006 15:04" }}</td>
+                                    <td class="actions">
+                                        <form action="/admin/messages/{{ .ID }}/delete" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message?')">
+                                            <button type="submit" class="btn-danger"><i class="fas fa-trash"></i> Supprimer</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{ if gt .totalPages 1 }}
+                    <div class="pagination">
+                        {{ if gt .page 1 }}
+                        <a href="/admin?tab=messages&page={{ sub .page 1 }}&search={{ .searchQuery }}" class="page-link">&laquo; Précédent</a>
+                        {{ end }}
+
+                        {{ range $i := seq 1 .totalPages }}
+                        <a href="/admin?tab=messages&page={{ $i }}&search={{ $.searchQuery }}" class="page-link {{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
+                        {{ end }}
+
+                        {{ if lt .page .totalPages }}
+                        <a href="/admin?tab=messages&page={{ add .page 1 }}&search={{ .searchQuery }}" class="page-link">Suivant &raquo;</a>
+                        {{ end }}
+                    </div>
+                    {{ end }}
+                </div>
+                {{ end }}
+
+                {{ if eq .activeTab "users" }}
+                <div class="admin-section">
+                    <h2>Gestion des utilisateurs</h2>
+                    
+                    <div class="filters">
+                        <form method="get" action="/admin">
+                            <input type="hidden" name="tab" value="users">
+                            <select name="role" onchange="this.form.submit()">
+                                <option value="all" {{ if eq .roleFilter "all" }}selected{{ end }}>Tous les rôles</option>
+                                <option value="user" {{ if eq .roleFilter "user" }}selected{{ end }}>Utilisateurs</option>
+                                <option value="admin" {{ if eq .roleFilter "admin" }}selected{{ end }}>Administrateurs</option>
+                            </select>
+                            <input type="text" name="search" placeholder="Rechercher un utilisateur..." value="{{ .searchQuery }}">
+                            <button type="submit" class="btn-primary">Filtrer</button>
+                        </form>
+                    </div>
+
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nom d'utilisateur</th>
+                                    <th>Email</th>
+                                    <th>Rôle</th>
+                                    <th>Date d'inscription</th>
+                                    <th>Dernière connexion</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .users }}
+                                <tr>
+                                    <td>{{ .ID }}</td>
+                                    <td><a href="/profile/{{ .ID }}" target="_blank">{{ .Username }}</a></td>
+                                    <td>{{ .Email }}</td>
+                                    <td>
+                                        <span class="role-badge role-{{ .Role }}">{{ .Role }}</span>
+                                    </td>
+                                    <td>{{ .CreatedAt.Format "02/01/2006 15:04" }}</td>
+                                    <td>{{ if .LastLogin }}{{ .LastLogin.Format "02/01/2006 15:04" }}{{ else }}Jamais{{ end }}</td>
+                                    <td class="actions">
+                                        {{ if ne .Role "admin" }}
+                                        <form action="/admin/users/{{ .ID }}/ban" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir bannir cet utilisateur?')">
+                                            <button type="submit" class="btn-danger"><i class="fas fa-ban"></i> Bannir</button>
+                                        </form>
+                                        {{ end }}
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{ if gt .totalPages 1 }}
+                    <div class="pagination">
+                        {{ if gt .page 1 }}
+                        <a href="/admin?tab=users&page={{ sub .page 1 }}&role={{ .roleFilter }}&search={{ .searchQuery }}" class="page-link">&laquo; Précédent</a>
+                        {{ end }}
+
+                        {{ range $i := seq 1 .totalPages }}
+                        <a href="/admin?tab=users&page={{ $i }}&role={{ $.roleFilter }}&search={{ $.searchQuery }}" class="page-link {{ if eq $i $.page }}active{{ end }}">{{ $i }}</a>
+                        {{ end }}
+
+                        {{ if lt .page .totalPages }}
+                        <a href="/admin?tab=users&page={{ add .page 1 }}&role={{ .roleFilter }}&search={{ .searchQuery }}" class="page-link">Suivant &raquo;</a>
+                        {{ end }}
+                    </div>
+                    {{ end }}
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4>Forum Éducatif</h4>
+                <p>Un espace d'échange et d'apprentissage pour tous les passionnés de savoir.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <ul class="footer-contact">
+                    <li>Email : <a href="mailto:contact@forum-educatif.fr">contact@forum-educatif.fr</a></li>
+                    <li>Adresse : 123 Rue de l'Éducation, Paris</li>
+                </ul>
+                <div class="footer-social">
+                    <a href="#" title="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" title="Facebook"><i class="fab fa-facebook"></i></a>
+                    <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Forum Éducatif. Tous droits réservés.
+        </div>
+    </footer>
+</body>
+
+</html>

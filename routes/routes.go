@@ -642,6 +642,235 @@ func SetupRoutes(r *gin.Engine) *gin.Engine {
 		c.Redirect(http.StatusFound, "/profile?success=true&tab=settings")
 	})
 
+	// Dans la fonction SetupRoutes, ajoutez ceci:
+
+	// Route pour le dashboard d'administration
+	// Ajouter ou modifier cette route dans SetupRoutes
+	// Route pour le dashboard d'administration
+	r.GET("/admin", func(c *gin.Context) {
+		// Vérifier si l'utilisateur est authentifié
+		isLoggedIn, _ := c.Get("isLoggedIn")
+		if !isLoggedIn.(bool) {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		// Vérifier si l'utilisateur est admin
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		var user models.User
+		if err := database.DB.First(&user, userID).Error; err != nil {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		// Vérifier si l'utilisateur est admin
+		if user.Role != "admin" {
+			// Rediriger vers la page d'accueil avec un message d'erreur
+			c.HTML(http.StatusForbidden, "error.html", gin.H{
+				"title":      "Accès refusé",
+				"message":    "Vous n'avez pas les permissions nécessaires pour accéder à cette page.",
+				"isLoggedIn": isLoggedIn.(bool),
+			})
+			return
+		}
+
+		// Récupérer l'onglet actif et les autres paramètres
+		activeTab := c.DefaultQuery("tab", "threads")
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		pageSize := 10
+
+		// Variables pour stocker les données en fonction de l'onglet
+		var threads []models.Thread
+		var messages []models.Message
+		var users []models.User
+		var totalPages int
+		var statusFilter, roleFilter, searchQuery string
+
+		switch activeTab {
+		case "threads":
+			// Filtres pour les threads
+			statusFilter = c.DefaultQuery("status", "all")
+			searchQuery = c.Query("search")
+
+			// Construction de la requête de base
+			threadQuery := database.DB.Model(&models.Thread{}).Preload("User").Preload("Category")
+
+			// Appliquer les filtres
+			if statusFilter != "all" {
+				threadQuery = threadQuery.Where("status = ?", statusFilter)
+			}
+			if searchQuery != "" {
+				threadQuery = threadQuery.Where("title LIKE ? OR content LIKE ?", "%"+searchQuery+"%", "%"+searchQuery+"%")
+			}
+
+			// Compter le total pour la pagination
+			var totalThreads int64
+			threadQuery.Count(&totalThreads)
+
+			// Récupérer les threads
+			threadQuery.Order("created_at DESC").
+				Limit(pageSize).
+				Offset((page - 1) * pageSize).
+				Find(&threads)
+
+			totalPages = int(math.Ceil(float64(totalThreads) / float64(pageSize)))
+
+		case "messages":
+			// Filtres pour les messages
+			searchQuery = c.Query("search")
+
+			// Construction de la requête de base
+			messageQuery := database.DB.Model(&models.Message{}).
+				Preload("User").
+				Preload("Thread")
+
+			// Appliquer les filtres
+			if searchQuery != "" {
+				messageQuery = messageQuery.Where("content LIKE ?", "%"+searchQuery+"%")
+			}
+
+			// Compter le total pour la pagination
+			var totalMessages int64
+			messageQuery.Count(&totalMessages)
+
+			// Récupérer les messages
+			messageQuery.Order("created_at DESC").
+				Limit(pageSize).
+				Offset((page - 1) * pageSize).
+				Find(&messages)
+
+			totalPages = int(math.Ceil(float64(totalMessages) / float64(pageSize)))
+
+		case "users":
+			// Filtres pour les utilisateurs
+			roleFilter = c.DefaultQuery("role", "all")
+			searchQuery = c.Query("search")
+
+			// Construction de la requête de base
+			userQuery := database.DB.Model(&models.User{})
+
+			// Appliquer les filtres
+			if roleFilter != "all" {
+				userQuery = userQuery.Where("role = ?", roleFilter)
+			}
+			if searchQuery != "" {
+				userQuery = userQuery.Where("username LIKE ? OR email LIKE ?", "%"+searchQuery+"%", "%"+searchQuery+"%")
+			}
+
+			// Compter le total pour la pagination
+			var totalUsers int64
+			userQuery.Count(&totalUsers)
+
+			// Récupérer les utilisateurs
+			userQuery.Order("created_at DESC").
+				Limit(pageSize).
+				Offset((page - 1) * pageSize).
+				Find(&users)
+
+			totalPages = int(math.Ceil(float64(totalUsers) / float64(pageSize)))
+
+		default:
+			c.Redirect(http.StatusFound, "/admin?tab=threads")
+			return
+		}
+
+		c.HTML(http.StatusOK, "admin_dashboard.html", gin.H{
+			"title":        "Administration - Forum Éducatif",
+			"isLoggedIn":   true,
+			"isAdmin":      true,
+			"activeTab":    activeTab,
+			"threads":      threads,
+			"messages":     messages,
+			"users":        users,
+			"page":         page,
+			"pageSize":     pageSize,
+			"totalPages":   totalPages,
+			"statusFilter": statusFilter,
+			"roleFilter":   roleFilter,
+			"searchQuery":  searchQuery,
+		})
+	})
+
+	// Route pour modifier l'état d'un fil de discussion
+	r.POST("/admin/threads/:id/status", middlewares.Auth(), middlewares.Admin(), func(c *gin.Context) {
+		threadID := c.Param("id")
+		status := c.PostForm("status")
+
+		// Vérifier que le status est valide
+		if status != "active" && status != "locked" && status != "archived" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Statut invalide"})
+			return
+		}
+
+		// Mettre à jour le status du thread
+		if err := database.DB.Model(&models.Thread{}).Where("id = ?", threadID).Update("status", status).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la mise à jour du statut"})
+			return
+		}
+
+		// Rediriger vers le dashboard
+		c.Redirect(http.StatusFound, "/admin?tab=threads")
+	})
+
+	// Route pour supprimer un fil de discussion
+	r.POST("/admin/threads/:id/delete", middlewares.Auth(), middlewares.Admin(), func(c *gin.Context) {
+		threadID := c.Param("id")
+
+		// Supprimer le thread
+		if err := database.DB.Delete(&models.Thread{}, threadID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la suppression du thread"})
+			return
+		}
+
+		// Rediriger vers le dashboard
+		c.Redirect(http.StatusFound, "/admin?tab=threads")
+	})
+
+	// Route pour supprimer un message
+	r.POST("/admin/messages/:id/delete", middlewares.Auth(), middlewares.Admin(), func(c *gin.Context) {
+		messageID := c.Param("id")
+
+		// Supprimer le message
+		if err := database.DB.Delete(&models.Message{}, messageID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la suppression du message"})
+			return
+		}
+
+		// Rediriger vers le dashboard
+		c.Redirect(http.StatusFound, "/admin?tab=messages")
+	})
+
+	// Route pour bannir un utilisateur
+	r.POST("/admin/users/:id/ban", middlewares.Auth(), middlewares.Admin(), func(c *gin.Context) {
+		userID := c.Param("id")
+
+		// Vérifier que l'utilisateur n'est pas un admin
+		var user models.User
+		if err := database.DB.First(&user, userID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Utilisateur non trouvé"})
+			return
+		}
+
+		if user.Role == "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Impossible de bannir un administrateur"})
+			return
+		}
+
+		// Bannir l'utilisateur (soft delete)
+		if err := database.DB.Delete(&user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors du bannissement de l'utilisateur"})
+			return
+		}
+
+		// Rediriger vers le dashboard
+		c.Redirect(http.StatusFound, "/admin?tab=users")
+	})
+
 	// API routes
 	api := r.Group("/api")
 	{

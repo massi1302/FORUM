@@ -70,20 +70,16 @@ func Auth() gin.HandlerFunc {
 
 func Admin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("userID")
-		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-			return
-		}
-
-		var user models.User
-		if err := DB.First(&user, userID).Error; err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "User not found"})
-			return
-		}
-
-		if user.Role != "admin" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		// Vérifier si l'utilisateur est authentifié
+		isAdmin, exists := c.Get("isAdmin")
+		if !exists || !isAdmin.(bool) {
+			// Selon le format attendu, renvoyer une erreur JSON ou rediriger
+			if c.GetHeader("Accept") == "application/json" {
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Accès réservé aux administrateurs"})
+			} else {
+				c.Redirect(http.StatusFound, "/")
+				c.Abort()
+			}
 			return
 		}
 
@@ -91,10 +87,12 @@ func Admin() gin.HandlerFunc {
 	}
 }
 
+// Dans la fonction SetUserAuthInfo, assurons-nous que isAdmin est correctement défini:
 func SetUserAuthInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Définir isLoggedIn à false par défaut
 		c.Set("isLoggedIn", false)
+		c.Set("isAdmin", false)
 
 		// Vérifier si le token existe dans les cookies
 		tokenString, err := c.Cookie("token")
@@ -128,7 +126,6 @@ func SetUserAuthInfo() gin.HandlerFunc {
 		c.Next()
 	}
 }
-
 func SearchThreads(c *gin.Context) {
 	// Récupérer le terme de recherche
 	query := c.Query("q")
